@@ -30,6 +30,8 @@ def get_db_connection():
         return None
 
 # Routes
+from flask import redirect, url_for  # 导入 redirect 和 url_for
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'GET':
@@ -73,7 +75,8 @@ def login():
                 grouped_schedule[date] = []
             grouped_schedule[date].append({"hour": entry['hour'], "student_name": entry['student_name']})
 
-        return render_template('schedule.html', username=username, schedule=grouped_schedule)
+        # Use redirect to go to the schedule page after successful login
+        return redirect(url_for('get_schedule'))
 
     return render_template('login.html', error="Invalid username or password")
 
@@ -95,55 +98,49 @@ def get_schedule():
     cursor.close()
     connection.close()
 
-    # Group schedule by date for easier rendering
+    # Group schedule by date and hour for easier rendering
     grouped_schedule = {}
     for entry in schedule:
         date = entry['date']
+        hour = entry['hour']
+        student_name = entry['student_name']
         if date not in grouped_schedule:
-            grouped_schedule[date] = []
-        grouped_schedule[date].append({"hour": entry['hour'], "student_name": entry['student_name']})
+            grouped_schedule[date] = {}
+        grouped_schedule[date][hour] = {"student_name": student_name}
 
     return render_template('schedule.html', schedule=grouped_schedule, username=username)
 
-@app.route('/schedule', methods=['POST'])
-def update_schedule():
-    if 'username' not in session:
-        return render_template('login.html', error="Please log in first.")
 
-    data = request.form
+@app.route('/schedule/toggle', methods=['POST'])
+def toggle_schedule():
+    if 'username' not in session:
+        return "Unauthorized", 403
+
+    data = request.get_json()
+    date = data['date']
+    hour = data['hour']
     username = session['username']
-    date = data.get('date')  # Format: YYYY-MM-DD
-    hour = data.get('hour')  # 0-23
-    student_name = data.get('student_name')
 
     connection = get_db_connection()
     if not connection:
-        return render_template('schedule.html', error="Database connection error.")
+        return "Database connection error.", 500
 
     cursor = connection.cursor()
+    # Check if the slot is booked
+    cursor.execute("SELECT student_name FROM schedule WHERE username = %s AND date = %s AND hour = %s", (username, date, hour))
+    result = cursor.fetchone()
 
-    # Check if entry exists
-    query_check = "SELECT id FROM schedule WHERE username = %s AND date = %s AND hour = %s"
-    cursor.execute(query_check, (username, date, hour))
-    entry = cursor.fetchone()
-
-    if student_name:  # Add or update schedule
-        if entry:
-            query_update = "UPDATE schedule SET student_name = %s WHERE id = %s"
-            cursor.execute(query_update, (student_name, entry[0]))
-        else:
-            query_insert = "INSERT INTO schedule (username, date, hour, student_name) VALUES (%s, %s, %s, %s)"
-            cursor.execute(query_insert, (username, date, hour, student_name))
-    else:  # Remove schedule
-        if entry:
-            query_delete = "DELETE FROM schedule WHERE id = %s"
-            cursor.execute(query_delete, (entry[0],))
+    if result:
+        # If booked, delete the entry
+        cursor.execute("DELETE FROM schedule WHERE username = %s AND date = %s AND hour = %s", (username, date, hour))
+    else:
+        # If not booked, insert a new entry (you can modify the student_name as needed)
+        cursor.execute("INSERT INTO schedule (username, date, hour, student_name) VALUES (%s, %s, %s, %s)", (username, date, hour, "Student Name"))
 
     connection.commit()
     cursor.close()
     connection.close()
-
-    return get_schedule()
+    return "Success", 200
 
 if __name__ == '__main__':
     app.run(debug=True)
