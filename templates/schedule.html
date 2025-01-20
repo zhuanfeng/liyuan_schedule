@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+        }
+        .container {
+            margin: 20px auto;
+            max-width: 800px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f9;
+        }
+        .schedule-form {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .schedule-form input, .schedule-form button {
+            padding: 10px;
+            margin-right: 10px;
+        }
+        .schedule-form button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .schedule-form button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Welcome, {{ username }}</h1>
+    </header>
+    <div class="container">
+        <form class="schedule-form" action="/schedule" method="POST">
+            <input type="date" name="date" required>
+            <input type="number" name="hour" min="0" max="23" placeholder="Hour (0-23)" required>
+            <input type="text" name="studentname" placeholder="Student Name">
+            <button type="submit">Add/Update</button>
+        </form>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Hour</th>
+                    <th>Student Name</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for date, entries in schedule.items() %}
+                {% for entry in entries %}
+                <tr>
+                    <td>{{ date }}</td>
+                    <td>{{ entry.hour }}</td>
+                    <td>{{ entry.studentname }}</td>
+                </tr>
+                {% endfor %}
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+
