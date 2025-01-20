@@ -1,58 +1,76 @@
-<style>
-    body {
-        font-family: Arial, sans-serif;
-        background-color: #f9f9f9;
-        margin: 0;
-        padding: 0;
-    }
-    header {
-        background-color: #007bff;
-        color: white;
-        padding: 10px 20px;
-        text-align: center;
-    }
-    .container {
-        margin: 20px auto;
-        max-width: 800px;
-    }
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-    }
-    table, th, td {
-        border: 1px solid #ddd;
-    }
-    th, td {
-        padding: 10px;
-        text-align: center;
-        cursor: pointer; /* 增加指针样式 */
-    }
-    th {
-        background-color: #f4f4f9;
-    }
-    .available {
-        background-color: #d4edda; /* 绿色背景，未占用 */
-    }
-    .booked {
-        background-color: #f8d7da; /* 红色背景，已占用 */
-    }
-    .schedule-form {
-        display: flex;
-        justify-content: space-between;
-        margin-bottom: 20px;
-    }
-    .schedule-form input, .schedule-form button {
-        padding: 10px;
-        margin-right: 10px;
-    }
-    .schedule-form button {
-        background-color: #007bff;
-        color: white;
-        border: none;
-        cursor: pointer;
-    }
-    .schedule-form button:hover {
-        background-color: #0056b3;
-    }
-</style>
+/* static/css/style.css */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    background-color: #007bff;
+    color: white;
+    padding: 15px 20px;
+    text-align: center; /* 确保标题居中 */
+}
+
+.container {
+    margin: 0; /* 移除边距 */
+    padding: 20px;
+    background-color: #ffffff; /* 背景色为白色 */
+    border-radius: 8px; /* 圆角 */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* 阴影效果 */
+    width: calc(100% - 40px); /* 容器宽度为100%减去内边距 */
+    max-width: 900px; /* 设置最大宽度 */
+}
+
+table {
+    width: 100%; /* 表格占满容器宽度 */
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+
+table, th, td {
+    border: 1px solid #ddd;
+}
+
+th, td {
+    padding: 12px; /* 增加内边距 */
+    text-align: center;
+    cursor: pointer; /* 增加指针样式 */
+}
+
+th {
+    background-color: #f4f4f9;
+}
+
+.available {
+    background-color: #d4edda; /* 绿色背景，未占用 */
+}
+
+.booked {
+    background-color: #f8d7da; /* 红色背景，已占用 */
+}
+
+.schedule-form {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+}
+
+.schedule-form input, .schedule-form button {
+    padding: 10px;
+    margin-right: 10px;
+    border: 1px solid #ccc; /* 添加边框 */
+    border-radius: 4px; /* 圆角 */
+}
+
+.schedule-form button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+
+.schedule-form button:hover {
+    background-color: #0056b3;
+}

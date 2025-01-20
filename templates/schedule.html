@@ -4,64 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schedule</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f9f9f9;
-            margin: 0;
-            padding: 0;
-        }
-        header {
-            background-color: #007bff;
-            color: white;
-            padding: 10px 20px;
-            text-align: center;
-        }
-        .container {
-            margin: 20px auto;
-            max-width: 800px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
-        }
-        table, th, td {
-            border: 1px solid #ddd;
-        }
-        th, td {
-            padding: 10px;
-            text-align: center;
-            cursor: pointer; /* 增加指针样式 */
-        }
-        th {
-            background-color: #f4f4f9;
-        }
-        .available {
-            background-color: #d4edda; /* 绿色背景，未占用 */
-        }
-        .booked {
-            background-color: #f8d7da; /* 红色背景，已占用 */
-        }
-        .schedule-form {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 20px;
-        }
-        .schedule-form input, .schedule-form button {
-            padding: 10px;
-            margin-right: 10px;
-        }
-        .schedule-form button {
-            background-color: #007bff;
-            color: white;
-            border: none;
-            cursor: pointer;
-        }
-        .schedule-form button:hover {
-            background-color: #0056b3;
-        }
-    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"> <!-- 引入 CSS 文件 -->
     <script>
         function toggleSchedule(date, hour) {
             const studentName = prompt("Please enter the student's name:");
@@ -102,7 +45,7 @@
             <thead>
                 <tr>
                     <th>Date</th>
-                    {% for hour in range(24) %}
+                    {% for hour in range(8, 24) %}  <!-- 从 8 点开始 -->
                         <th>{{ hour }}:00</th>
                     {% endfor %}
                 </tr>
@@ -111,7 +54,7 @@
                 {% for date in schedule.keys() %}
                 <tr>
                     <td>{{ date }}</td>
-                    {% for hour in range(24) %}
+                    {% for hour in range(8, 24) %}
                         <td id="{{ date }}-{{ hour }}"
                             class="{% if date in schedule and hour in schedule[date] %}booked{% else %}available{% endif %}"
                             onclick="toggleSchedule('{{ date }}', {{ hour }})">
@@ -127,5 +70,3 @@
     </div>
 </body>
 </html>
-
-

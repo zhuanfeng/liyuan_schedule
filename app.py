@@ -1,3 +1,6 @@
+import calendar
+import datetime
+
 from flask import Flask, request, jsonify, session, render_template, redirect, url_for
 from flask_bcrypt import Bcrypt
 import mysql.connector
@@ -98,17 +101,19 @@ def get_schedule():
     cursor.close()
     connection.close()
 
-    # Group schedule by date and hour for easier rendering
-    grouped_schedule = {}
+    # 获取当前月份的天数和所有日期
+    today = datetime.date.today()
+    month_days = calendar.monthrange(today.year, today.month)[1]
+    dates = [datetime.date(today.year, today.month, day) for day in range(1, month_days + 1)]
+
+    # Group schedule by date for easier rendering
+    grouped_schedule = {date: [] for date in dates}  # 初始化所有日期
     for entry in schedule:
         date = entry['date']
-        hour = entry['hour']
-        student_name = entry['student_name']
-        if date not in grouped_schedule:
-            grouped_schedule[date] = {}
-        grouped_schedule[date][hour] = {"student_name": student_name}
+        if date in grouped_schedule:
+            grouped_schedule[date].append({"hour": entry['hour'], "student_name": entry['student_name']})
 
-    return render_template('schedule.html', schedule=grouped_schedule, username=username)
+    return render_template('schedule.html', username=username, schedule=grouped_schedule)
 
 
 @app.route('/schedule/toggle', methods=['POST'])
