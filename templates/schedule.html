@@ -32,18 +32,66 @@
         th, td {
             padding: 10px;
             text-align: center;
-            cursor: pointer; /* Add cursor style for clickable cells */
+            cursor: pointer; /* 增加指针样式 */
         }
         th {
             background-color: #f4f4f9;
         }
         .available {
-            background-color: #d4edda; /* Light green for available slots */
+            background-color: #d4edda; /* 绿色背景，未占用 */
         }
         .booked {
-            background-color: #f8d7da; /* Light red for booked slots */
+            background-color: #f8d7da; /* 红色背景，已占用 */
+        }
+        .schedule-form {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+        }
+        .schedule-form input, .schedule-form button {
+            padding: 10px;
+            margin-right: 10px;
+        }
+        .schedule-form button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .schedule-form button:hover {
+            background-color: #0056b3;
         }
     </style>
+    <script>
+        function toggleSchedule(date, hour) {
+            const studentName = prompt("Please enter the student's name:");
+            if (studentName) {
+                // 使用 AJAX 请求更新课程安排
+                fetch('/schedule', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ date: date, hour: hour, student_name: studentName }),
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 更新表格中的学生名字
+                        const cell = document.getElementById(`${date}-${hour}`);
+                        cell.textContent = studentName;
+                        cell.classList.remove('available');
+                        cell.classList.add('booked');
+                    } else {
+                        alert("Error: " + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
+            }
+        }
+    </script>
 </head>
 <body>
     <header>
@@ -53,7 +101,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>Date/Hour</th>
+                    <th>Date</th>
                     {% for hour in range(24) %}
                         <th>{{ hour }}:00</th>
                     {% endfor %}
@@ -64,7 +112,8 @@
                 <tr>
                     <td>{{ date }}</td>
                     {% for hour in range(24) %}
-                        <td class="{% if date in schedule and hour in schedule[date] %}booked{% else %}available{% endif %}"
+                        <td id="{{ date }}-{{ hour }}"
+                            class="{% if date in schedule and hour in schedule[date] %}booked{% else %}available{% endif %}"
                             onclick="toggleSchedule('{{ date }}', {{ hour }})">
                             {% if date in schedule and hour in schedule[date] %}
                                 {{ schedule[date][hour].student_name }}
@@ -76,21 +125,7 @@
             </tbody>
         </table>
     </div>
-    <script>
-        function toggleSchedule(date, hour) {
-            const xhr = new XMLHttpRequest();
-            xhr.open("POST", "/schedule/toggle", true);
-            xhr.setRequestHeader("Content-Type", "application/json");
-            xhr.onload = function() {
-                if (xhr.status === 200) {
-                    location.reload(); // Reload the page to see the changes
-                } else {
-                    alert("Error: " + xhr.responseText);
-                }
-            };
-            xhr.send(JSON.stringify({ date: date, hour: hour }));
-        }
-    </script>
 </body>
 </html>
+
 

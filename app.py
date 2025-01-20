@@ -142,6 +142,36 @@ def toggle_schedule():
     connection.close()
     return "Success", 200
 
+@app.route('/schedule', methods=['POST'])
+def update_schedule():
+    if 'username' not in session:
+        return jsonify({"message": "Unauthorized"}), 401
+
+    data = request.get_json()
+    date = data.get('date')
+    hour = data.get('hour')
+    student_name = data.get('student_name')
+    username = session['username']
+
+    connection = get_db_connection()
+    if not connection:
+        return jsonify({"message": "Database connection error."}), 500
+
+    cursor = connection.cursor()
+    # 插入或更新课程安排
+    query = """
+    INSERT INTO schedule (username, date, hour, student_name)
+    VALUES (%s, %s, %s, %s)
+    ON DUPLICATE KEY UPDATE student_name = %s
+    """
+    cursor.execute(query, (username, date, hour, student_name, student_name))
+    connection.commit()
+    cursor.close()
+    connection.close()
+
+    return jsonify({"success": True})
+
+
 if __name__ == '__main__':
     app.run(debug=True)
 
