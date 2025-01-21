@@ -18,6 +18,13 @@ bcrypt = Bcrypt(app)
 def index():
     return redirect(url_for('login'))
 
+@app.template_filter('format_date')
+def format_date(value, format='%m-%d'):
+    """格式化日期为指定格式"""
+    if value:
+        return value.strftime(format)
+    return value
+
 # Database connection
 def get_db_connection():
     try:

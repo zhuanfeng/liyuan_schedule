@@ -68,20 +68,25 @@
     <header>
         <h1>Welcome, {{ username }}</h1>
     </header>
-    <div class="container">
+    <div class="schedule-container">
+        <!-- 在表格顶部显示年份 -->
+        <div class="year-display">
+            Year: {{ schedule.keys()|list|first|format_date('%Y') }}
+        </div>
         <table>
             <thead>
                 <tr>
                     <th>Date</th>
-                    {% for hour in range(8, 24) %}  <!-- 从 8 点开始 -->
-                        <th>{{ hour }}:00</th>
+                    {% for hour in range(8, 24) %}
+                    <th>{{ hour }}:00</th>
                     {% endfor %}
                 </tr>
             </thead>
             <tbody>
                 {% for date, hours in schedule.items() %}
                 <tr>
-                    <td>{{ date }}</td>
+                    <!-- 仅显示月份和日期 -->
+                    <td>{{ date|format_date }}</td>
                     {% for hour in range(8, 24) %}
                     <td id="{{ date }}-{{ hour }}"
                         class="{% if hours[hour] %}booked{% else %}available{% endif %}"
@@ -94,7 +99,6 @@
                 </tr>
                 {% endfor %}
             </tbody>
-
         </table>
     </div>
 </body>
