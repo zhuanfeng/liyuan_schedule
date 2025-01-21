@@ -25,6 +25,20 @@ def format_date(value, format='%m-%d'):
         return value.strftime(format)
     return value
 
+@app.template_filter('translate_weekday')
+def translate_weekday(weekday):
+    translations = {
+        'Monday': '星期一',
+        'Tuesday': '星期二',
+        'Wednesday': '星期三',
+        'Thursday': '星期四',
+        'Friday': '星期五',
+        'Saturday': '星期六',
+        'Sunday': '星期日',
+    }
+    return translations.get(weekday, weekday)
+
+
 # Database connection
 def get_db_connection():
     try:
@@ -125,7 +139,6 @@ def get_schedule():
             grouped_schedule[date][hour] = {"student_name": student_name}
 
     return render_template('schedule.html', username=username, schedule=grouped_schedule)
-
 
 @app.route('/schedule/toggle', methods=['POST'])
 def toggle_schedule():

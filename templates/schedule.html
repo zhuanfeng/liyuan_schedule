@@ -69,30 +69,32 @@
         <h1>Welcome, {{ username }}</h1>
     </header>
     <div class="schedule-container">
-        <!-- 在表格顶部显示年份 -->
+        <!-- 显示年份 -->
         <div class="year-display">
             Year: {{ schedule.keys()|list|first|format_date('%Y') }}
         </div>
         <table>
             <thead>
                 <tr>
-                    <th>Date</th>
-                    {% for hour in range(8, 24) %}
-                    <th>{{ hour }}:00</th>
+                    <th>Hour</th>
+                    {% for date in schedule.keys() %}
+                    <th>
+                        {{ date|format_date('%m-%d') }}<br>
+                        {{ date|format_date('%A')|translate_weekday }}
+                    </th>
                     {% endfor %}
                 </tr>
             </thead>
             <tbody>
-                {% for date, hours in schedule.items() %}
+                {% for hour in range(8, 24) %}
                 <tr>
-                    <!-- 仅显示月份和日期 -->
-                    <td>{{ date|format_date }}</td>
-                    {% for hour in range(8, 24) %}
+                    <td>{{ hour }}:00</td>
+                    {% for date in schedule.keys() %}
                     <td id="{{ date }}-{{ hour }}"
-                        class="{% if hours[hour] %}booked{% else %}available{% endif %}"
+                        class="{% if schedule[date][hour] and schedule[date][hour].student_name %}booked{% else %}available{% endif %}"
                         onclick="toggleSchedule('{{ date }}', {{ hour }})">
-                        {% if hours[hour] %}
-                            {{ hours[hour].student_name }}
+                        {% if schedule[date][hour] and schedule[date][hour].student_name %}
+                            {{ schedule[date][hour].student_name }}
                         {% endif %}
                     </td>
                     {% endfor %}

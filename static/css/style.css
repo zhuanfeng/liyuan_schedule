@@ -37,6 +37,7 @@ th, td {
     padding: 12px; /* 增加内边距 */
     text-align: center;
     cursor: pointer; /* 增加指针样式 */
+    min-width: 80px;
 }
 
 th {
