@@ -7,31 +7,59 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"> <!-- 引入 CSS 文件 -->
     <script>
         function toggleSchedule(date, hour) {
-            const studentName = prompt("Please enter the student's name:");
-            if (studentName) {
-                // 使用 AJAX 请求更新课程安排
-                fetch('/schedule', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ date: date, hour: hour, student_name: studentName }),
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // 更新表格中的学生名字
-                        const cell = document.getElementById(`${date}-${hour}`);
-                        cell.textContent = studentName;
-                        cell.classList.remove('available');
-                        cell.classList.add('booked');
-                    } else {
-                        alert("Error: " + data.message);
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                });
+            const cell = document.getElementById(`${date}-${hour}`);
+            if (cell.classList.contains('booked')) {
+                // 如果是已占用状态，则清除学生名字并恢复为未占用状态
+                const confirmClear = confirm("This slot is booked. Do you want to clear it?");
+                if (confirmClear) {
+                    fetch('/schedule', {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ date: date, hour: hour }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 更新格子的状态为未占用
+                            cell.textContent = '';
+                            cell.classList.remove('booked');
+                            cell.classList.add('available');
+                        } else {
+                            alert("Error: " + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                }
+            } else {
+                // 如果是未占用状态，则允许输入学生名字并更新为占用状态
+                const studentName = prompt("Please enter the student's name:");
+                if (studentName) {
+                    fetch('/schedule', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ date: date, hour: hour, student_name: studentName }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 更新格子的状态为已占用
+                            cell.textContent = studentName;
+                            cell.classList.remove('available');
+                            cell.classList.add('booked');
+                        } else {
+                            alert("Error: " + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                    });
+                }
             }
         }
     </script>
@@ -51,21 +79,22 @@
                 </tr>
             </thead>
             <tbody>
-                {% for date in schedule.keys() %}
+                {% for date, hours in schedule.items() %}
                 <tr>
                     <td>{{ date }}</td>
                     {% for hour in range(8, 24) %}
-                        <td id="{{ date }}-{{ hour }}"
-                            class="{% if date in schedule and hour in schedule[date] %}booked{% else %}available{% endif %}"
-                            onclick="toggleSchedule('{{ date }}', {{ hour }})">
-                            {% if date in schedule and hour in schedule[date] %}
-                                {{ schedule[date][hour].student_name }}
-                            {% endif %}
-                        </td>
+                    <td id="{{ date }}-{{ hour }}"
+                        class="{% if hours[hour] %}booked{% else %}available{% endif %}"
+                        onclick="toggleSchedule('{{ date }}', {{ hour }})">
+                        {% if hours[hour] %}
+                            {{ hours[hour].student_name }}
+                        {% endif %}
+                    </td>
                     {% endfor %}
                 </tr>
                 {% endfor %}
             </tbody>
+
         </table>
     </div>
 </body>

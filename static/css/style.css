@@ -43,13 +43,16 @@ th {
     background-color: #f4f4f9;
 }
 
-.available {
-    background-color: #d4edda; /* 绿色背景，未占用 */
+.booked {
+    background-color: #ffcccc; /* 红色 */
+    cursor: pointer;
 }
 
-.booked {
-    background-color: #f8d7da; /* 红色背景，已占用 */
+.available {
+    background-color: #ccffcc; /* 绿色 */
+    cursor: pointer;
 }
+
 
 .schedule-form {
     display: flex;

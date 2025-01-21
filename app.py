@@ -106,12 +106,16 @@ def get_schedule():
     month_days = calendar.monthrange(today.year, today.month)[1]
     dates = [datetime.date(today.year, today.month, day) for day in range(1, month_days + 1)]
 
-    # Group schedule by date for easier rendering
-    grouped_schedule = {date: [] for date in dates}  # 初始化所有日期
+    # 初始化为嵌套字典：外层键为日期，内层键为小时
+    grouped_schedule = {date: {hour: None for hour in range(8, 24)} for date in dates}
+
+    # 填充数据库中的数据
     for entry in schedule:
         date = entry['date']
-        if date in grouped_schedule:
-            grouped_schedule[date].append({"hour": entry['hour'], "student_name": entry['student_name']})
+        hour = entry['hour']
+        student_name = entry['student_name']
+        if date in grouped_schedule and hour in grouped_schedule[date]:
+            grouped_schedule[date][hour] = {"student_name": student_name}
 
     return render_template('schedule.html', username=username, schedule=grouped_schedule)
 
@@ -147,29 +151,35 @@ def toggle_schedule():
     connection.close()
     return "Success", 200
 
-@app.route('/schedule', methods=['POST'])
+@app.route('/schedule', methods=['POST', 'DELETE'])
 def update_schedule():
-    if 'username' not in session:
-        return jsonify({"message": "Unauthorized"}), 401
-
     data = request.get_json()
     date = data.get('date')
     hour = data.get('hour')
-    student_name = data.get('student_name')
-    username = session['username']
 
+    if 'username' not in session:
+        return jsonify({"success": False, "message": "User not logged in."}), 403
+
+    username = session['username']
     connection = get_db_connection()
     if not connection:
-        return jsonify({"message": "Database connection error."}), 500
+        return jsonify({"success": False, "message": "Database connection error."}), 500
 
     cursor = connection.cursor()
-    # 插入或更新课程安排
-    query = """
-    INSERT INTO schedule (username, date, hour, student_name)
-    VALUES (%s, %s, %s, %s)
-    ON DUPLICATE KEY UPDATE student_name = %s
-    """
-    cursor.execute(query, (username, date, hour, student_name, student_name))
+    if request.method == 'POST':
+        # 添加或更新学生名字
+        student_name = data.get('student_name')
+        query = """
+            INSERT INTO schedule (username, date, hour, student_name)
+            VALUES (%s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE student_name = %s
+        """
+        cursor.execute(query, (username, date, hour, student_name, student_name))
+    elif request.method == 'DELETE':
+        # 删除学生名字
+        query = "DELETE FROM schedule WHERE username = %s AND date = %s AND hour = %s"
+        cursor.execute(query, (username, date, hour))
+
     connection.commit()
     cursor.close()
     connection.close()
