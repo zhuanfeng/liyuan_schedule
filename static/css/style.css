@@ -78,3 +78,73 @@ th {
 .schedule-form button:hover {
     background-color: #0056b3;
 }
+
+/* Admin Panel Styles */
+.action-buttons {
+    display: flex;
+    gap: 10px; /* 增加操作按钮之间的间距 */
+    justify-content: center;
+}
+
+.inline-form {
+    display: inline; /* 确保表单在一行内 */
+    margin: 0; /* 移除表单的默认外边距 */
+}
+
+.add-teacher-form {
+    display: flex;
+    gap: 10px; /* 增加输入框和按钮之间的间距 */
+    flex-wrap: wrap; /* 在屏幕宽度较小时换行 */
+    justify-content: space-between;
+}
+
+button.delete-button {
+    background-color: #ff4d4f; /* 红色背景用于删除按钮 */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+button.delete-button:hover {
+    background-color: #d9363e; /* 深红色用于悬停效果 */
+}
+
+button.update-button {
+    background-color: #ffc107; /* 黄色背景用于更新按钮 */
+    color: black;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+button.update-button:hover {
+    background-color: #e0a800; /* 深黄色用于悬停效果 */
+}
+
+button.add-button {
+    background-color: #28a745; /* 绿色背景用于添加按钮 */
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 8px 12px;
+    cursor: pointer;
+}
+
+button.add-button:hover {
+    background-color: #218838; /* 深绿色用于悬停效果 */
+}
+
+input {
+    padding: 10px; /* 输入框的内边距 */
+    border: 1px solid #ccc; /* 边框颜色 */
+    border-radius: 4px; /* 圆角效果 */
+    width: calc(100% - 22px); /* 输入框宽度，减去内边距和边框宽度 */
+}
+
+input[type="password"],
+input[type="text"] {
+    max-width: 300px; /* 限制输入框的最大宽度 */
+}

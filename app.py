@@ -1,7 +1,7 @@
 import calendar
 import datetime
 
-from flask import Flask, request, jsonify, session, render_template, redirect, url_for
+from flask import Flask, request, jsonify, session, render_template, redirect, url_for, flash
 from flask_bcrypt import Bcrypt
 import mysql.connector
 from mysql.connector import Error
@@ -79,6 +79,10 @@ def login():
     if user and bcrypt.check_password_hash(user['password_hash'], password):
         session['username'] = username
 
+        # 特殊逻辑：如果用户名是“小荔”，跳转到 admin 页面
+        if username == "小荔":
+            return redirect(url_for('admin'))
+
         # Fetch schedule for the logged-in user
         connection = get_db_connection()
         if not connection:
@@ -104,6 +108,80 @@ def login():
 
     return render_template('login.html', error="Invalid username or password")
 
+@app.route('/admin', methods=['GET'])
+def admin():
+    connection = get_db_connection()
+    cursor = connection.cursor(dictionary=True)
+    query = "SELECT username FROM users"
+    cursor.execute(query)
+    teachers = cursor.fetchall()
+    cursor.close()
+    connection.close()
+
+    return render_template('admin.html', teachers=teachers)
+
+@app.route('/admin/add', methods=['POST'])
+def add_teacher():
+    username = request.form.get('username')
+    password = request.form.get('password')
+
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    query = "INSERT INTO users (username, password_hash) VALUES (%s, %s)"
+    try:
+        cursor.execute(query, (username, hashed_password))
+        connection.commit()
+        flash(f"Teacher '{username}' added successfully!", 'success')
+    except Exception as e:
+        flash(f"Error adding teacher: {str(e)}", 'error')
+    finally:
+        cursor.close()
+        connection.close()
+
+    return redirect(url_for('admin'))
+
+@app.route('/admin/delete', methods=['POST'])
+def delete_teacher():
+    username = request.form.get('username')
+
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    query = "DELETE FROM users WHERE username = %s"
+    try:
+        cursor.execute(query, (username,))
+        connection.commit()
+        flash(f"Teacher '{username}' deleted successfully!", 'success')
+    except Exception as e:
+        flash(f"Error deleting teacher: {str(e)}", 'error')
+    finally:
+        cursor.close()
+        connection.close()
+
+    return redirect(url_for('admin'))
+
+@app.route('/admin/update', methods=['POST'])
+def update_teacher():
+    username = request.form.get('username')
+    new_password = request.form.get('new_password')
+
+    hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    query = "UPDATE users SET password_hash = %s WHERE username = %s"
+    try:
+        cursor.execute(query, (hashed_password, username))
+        connection.commit()
+        flash(f"Password for '{username}' updated successfully!", 'success')
+    except Exception as e:
+        flash(f"Error updating password: {str(e)}", 'error')
+    finally:
+        cursor.close()
+        connection.close()
+
+    return redirect(url_for('admin'))
 
 @app.route('/schedule', methods=['GET'])
 def get_schedule():
@@ -206,7 +284,25 @@ def update_schedule():
 
     return jsonify({"success": True})
 
+def add_user_to_db(username, password):
+
+    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
+
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    query = "INSERT INTO users (username, password_hash) VALUES (%s, %s)"
+    try:
+        cursor.execute(query, (username, hashed_password))
+        connection.commit()
+        flash(f"Teacher '{username}' added successfully!", 'success')
+    except Exception as e:
+        flash(f"Error adding teacher: {str(e)}", 'error')
+    finally:
+        cursor.close()
+        connection.close()
+
+    return redirect(url_for('admin'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
-
