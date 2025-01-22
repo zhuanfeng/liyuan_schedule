@@ -108,15 +108,21 @@ def login():
 
     return render_template('login.html', error="Invalid username or password")
 
+
 @app.route('/admin', methods=['GET'])
 def admin():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
+
+    # 查询所有用户
     query = "SELECT username FROM users"
     cursor.execute(query)
     teachers = cursor.fetchall()
     cursor.close()
     connection.close()
+
+    # 过滤掉“小荔”
+    teachers = [teacher for teacher in teachers if teacher['username'] != "小荔"]
 
     return render_template('admin.html', teachers=teachers)
 
