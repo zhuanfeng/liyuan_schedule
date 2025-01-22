@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule (View Only)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Schedule for {{ username }}</h1>
+    </header>
+    <div class="schedule-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Hour</th>
+                    {% for date in schedule.keys() %}
+                    <th>
+                        {{ date|format_date('%m-%d') }}<br>
+                        {{ date|format_date('%A')|translate_weekday }}
+                    </th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for hour in range(8, 24) %}
+                <tr>
+                    <td>{{ hour }}:00</td>
+                    {% for date in schedule.keys() %}
+                    <td class="{% if schedule[date][hour] and schedule[date][hour].student_name %}booked{% else %}available{% endif %}">
+                        {% if schedule[date][hour] and schedule[date][hour].student_name %}
+                            {{ schedule[date][hour].student_name }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

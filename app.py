@@ -221,6 +221,44 @@ def update_teacher():
 
     return redirect(url_for('admin'))
 
+@app.route('/schedule_for_admin', methods=['GET'])
+def schedule_for_admin():
+    if 'username' not in session or session['username'] != '小荔':
+        return render_template('login.html', error="Unauthorized access.")
+
+    target_username = request.args.get('username')
+    if not target_username:
+        return jsonify({"success": False, "message": "No target user specified."}), 400
+
+    connection = get_db_connection()
+    if not connection:
+        return render_template('schedule_for_admin.html', error="Database connection error.")
+
+    cursor = connection.cursor(dictionary=True)
+    query = "SELECT date, hour, student_name FROM schedule WHERE username = %s"
+    cursor.execute(query, (target_username,))
+    schedule = cursor.fetchall()
+    cursor.close()
+    connection.close()
+
+    # 获取当前月份的天数和所有日期
+    today = datetime.date.today()
+    month_days = calendar.monthrange(today.year, today.month)[1]
+    dates = [datetime.date(today.year, today.month, day) for day in range(1, month_days + 1)]
+
+    # 初始化为嵌套字典：外层键为日期，内层键为小时
+    grouped_schedule = {date: {hour: None for hour in range(8, 24)} for date in dates}
+
+    # 填充数据库中的数据
+    for entry in schedule:
+        date = entry['date']
+        hour = entry['hour']
+        student_name = entry['student_name']
+        if date in grouped_schedule and hour in grouped_schedule[date]:
+            grouped_schedule[date][hour] = {"student_name": student_name}
+
+    return render_template('schedule_for_admin.html', username=target_username, schedule=grouped_schedule)
+
 @app.route('/schedule', methods=['GET'])
 def get_schedule():
     if 'username' not in session:
