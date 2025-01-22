@@ -111,6 +111,14 @@ def login():
 
 @app.route('/admin', methods=['GET'])
 def admin():
+    if 'username' not in session:
+        return jsonify({"success": False, "message": "用户未登录."}), 403
+
+    # 检查用户名是否为“小荔”
+    username = session['username']
+    if username != "小荔":
+        return render_template('login.html', error="非管理员账户无法进入该页面")
+
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
@@ -128,6 +136,14 @@ def admin():
 
 @app.route('/admin/add', methods=['POST'])
 def add_teacher():
+    if 'username' not in session:
+        return jsonify({"success": False, "message": "用户未登录."}), 403
+
+    # 检查用户名是否为“小荔”
+    username = session['username']
+    if username != "小荔":
+        return render_template('login.html', error="非管理员账户无法进入该页面")
+
     username = request.form.get('username')
     password = request.form.get('password')
 
@@ -150,6 +166,14 @@ def add_teacher():
 
 @app.route('/admin/delete', methods=['POST'])
 def delete_teacher():
+    if 'username' not in session:
+        return jsonify({"success": False, "message": "用户未登录."}), 403
+
+    # 检查用户名是否为“小荔”
+    username = session['username']
+    if username != "小荔":
+        return render_template('login.html', error="非管理员账户无法进入该页面")
+
     username = request.form.get('username')
 
     connection = get_db_connection()
@@ -169,6 +193,14 @@ def delete_teacher():
 
 @app.route('/admin/update', methods=['POST'])
 def update_teacher():
+    if 'username' not in session:
+        return jsonify({"success": False, "message": "用户未登录."}), 403
+
+    # 检查用户名是否为“小荔”
+    username = session['username']
+    if username != "小荔":
+        return render_template('login.html', error="非管理员账户无法进入该页面")
+
     username = request.form.get('username')
     new_password = request.form.get('new_password')
 
@@ -192,7 +224,7 @@ def update_teacher():
 @app.route('/schedule', methods=['GET'])
 def get_schedule():
     if 'username' not in session:
-        return render_template('login.html', error="Please log in first.")
+        return jsonify({"success": False, "message": "用户未登录."}), 403
 
     username = session['username']
     connection = get_db_connection()
@@ -227,7 +259,7 @@ def get_schedule():
 @app.route('/schedule/toggle', methods=['POST'])
 def toggle_schedule():
     if 'username' not in session:
-        return "Unauthorized", 403
+        return jsonify({"success": False, "message": "用户未登录."}), 403
 
     data = request.get_json()
     date = data['date']
@@ -262,7 +294,7 @@ def update_schedule():
     hour = data.get('hour')
 
     if 'username' not in session:
-        return jsonify({"success": False, "message": "User not logged in."}), 403
+        return jsonify({"success": False, "message": "用户未登录."}), 403
 
     username = session['username']
     connection = get_db_connection()
