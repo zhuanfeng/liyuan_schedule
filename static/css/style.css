@@ -148,3 +148,18 @@ input[type="password"],
 input[type="text"] {
     max-width: 300px; /* 限制输入框的最大宽度 */
 }
+
+.schedule-input {
+    width: 100%;
+    height: 100%;
+    border: none;
+    text-align: center;
+    background-color: transparent;
+    font-size: inherit;
+    box-sizing: border-box;
+}
+
+.schedule-input:focus {
+    outline: none;
+    background-color: #f0f8ff; /* Highlight when focused */
+}
