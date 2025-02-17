@@ -46,7 +46,7 @@ def get_db_connection():
             host='localhost',
             database='liyuan_schedule',
             user='root',
-            password='1234'
+            password='167163,LFPdyyzsd'
         )
         return connection
     except Error as e:
