@@ -7,40 +7,52 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <header>
-        <h1>Schedule for {{ username }}</h1>
-    </header>
-    <div class="schedule-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Hour</th>
-                    {% for date in schedule.keys() %}
-                    <th>
-                        {{ date|format_date('%m-%d') }}<br>
-                        {{ date|format_date('%A')|translate_weekday }}
-                    </th>
+    <div class="sidebar">
+        <h2>系统名称</h2>
+        <ul>
+            <li><a href="#">首页</a></li>
+            <li class="active"><a href="#">周期表</a></li>
+            <li><a href="#">管理员</a></li>
+        </ul>
+    </div>
+    <div class="main-content">
+        <div class="welcome-header">
+            <h1>Schedule for {{ username }}</h1>
+            <div class="date-display">工作周期表</div>
+            <div class="current-date">日期时间：{{ schedule.keys()|list|first|format_date('%Y年%m月%d日') }}</div>
+        </div>
+        <div class="schedule-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Hour</th>
+                        {% for date in schedule.keys() %}
+                        <th>
+                            {{ date|format_date('%m-%d') }}<br>
+                            {{ date|format_date('%A')|translate_weekday }}
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for hour in range(8, 24) %}
+                    <tr>
+                        <td>{{ hour }}:00</td>
+                        {% for date in schedule.keys() %}
+                        <td class="{% if schedule[date][hour] and schedule[date][hour].student_name %}booked{% else %}available{% endif %}">
+                            {% if schedule[date][hour] and schedule[date][hour].student_name %}
+                                {{ schedule[date][hour].student_name }}
+                            {% endif %}
+                        </td>
+                        {% endfor %}
+                    </tr>
                     {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for hour in range(8, 24) %}
-                <tr>
-                    <td>{{ hour }}:00</td>
-                    {% for date in schedule.keys() %}
-                    <td class="{% if schedule[date][hour] and schedule[date][hour].student_name %}booked{% else %}available{% endif %}">
-                        {% if schedule[date][hour] and schedule[date][hour].student_name %}
-                            {{ schedule[date][hour].student_name }}
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        <div class="week-navigation">
-            <button class="nav-btn" onclick="window.location.href='?week=prev'">上一周</button>
-            <button class="nav-btn" onclick="window.location.href='?week=next'">下一周</button>
+                </tbody>
+            </table>
+            <div class="week-navigation">
+                <button class="nav-btn" onclick="window.location.href='?week=prev'">上一周</button>
+                <button class="nav-btn" onclick="window.location.href='?week=next'">下一周</button>
+            </div>
         </div>
     </div>
 </body>
