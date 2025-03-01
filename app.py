@@ -21,9 +21,16 @@ def index():
 @app.template_filter('format_date')
 def format_date(value, format='%m-%d'):
     """格式化日期为指定格式"""
-    if value:
-        return value.strftime(format)
-    return value
+    if not value:
+        return value
+    
+    # 首先使用基本的英文格式
+    basic_format = format.replace('年', 'Y').replace('月', 'M').replace('日', 'D')
+    result = value.strftime(basic_format)
+    
+    # 然后替换回中文字符
+    result = result.replace('Y', '年').replace('M', '月').replace('D', '日')
+    return result
 
 @app.template_filter('translate_weekday')
 def translate_weekday(weekday):
@@ -34,8 +41,10 @@ def translate_weekday(weekday):
         'Thursday': '星期四',
         'Friday': '星期五',
         'Saturday': '星期六',
-        'Sunday': '星期日',
+        'Sunday': '星期日'
     }
+    # 确保返回纯中文格式
+    return translations.get(weekday, '星期一')
     return translations.get(weekday, weekday)
 
 
@@ -220,7 +229,6 @@ def update_teacher():
         connection.close()
 
     return redirect(url_for('admin'))
-
 @app.route('/schedule_for_admin', methods=['GET'])
 def schedule_for_admin():
     if 'username' not in session or session['username'] != '小荔':
@@ -241,10 +249,20 @@ def schedule_for_admin():
     cursor.close()
     connection.close()
 
-    # 获取当前月份的天数和所有日期
+    # 获取周偏移量参数
+    week_param = request.args.get('week')
+    
+    # 获取当前周的日期范围
     today = datetime.date.today()
-    month_days = calendar.monthrange(today.year, today.month)[1]
-    dates = [datetime.date(today.year, today.month, day) for day in range(1, month_days + 1)]
+    monday = today - datetime.timedelta(days=today.weekday())
+    
+    # 根据参数调整周数
+    if week_param == 'prev':
+        monday = monday - datetime.timedelta(days=7)
+    elif week_param == 'next':
+        monday = monday + datetime.timedelta(days=7)
+    
+    dates = [monday + datetime.timedelta(days=i) for i in range(7)]
 
     # 初始化为嵌套字典：外层键为日期，内层键为小时
     grouped_schedule = {date: {hour: None for hour in range(8, 24)} for date in dates}
@@ -276,10 +294,18 @@ def get_schedule():
     cursor.close()
     connection.close()
 
-    # 获取当前月份的天数和所有日期
+    # 获取周偏移量参数
+    week_param = request.args.get('week', '0')
+    week_offset = int(week_param)
+    
+    # 获取当前周的日期范围
     today = datetime.date.today()
-    month_days = calendar.monthrange(today.year, today.month)[1]
-    dates = [datetime.date(today.year, today.month, day) for day in range(1, month_days + 1)]
+    monday = today - datetime.timedelta(days=today.weekday())
+    
+    # 根据偏移量调整周数
+    monday += datetime.timedelta(days=7 * week_offset)
+    
+    dates = [monday + datetime.timedelta(days=i) for i in range(7)]
 
     # 初始化为嵌套字典：外层键为日期，内层键为小时
     grouped_schedule = {date: {hour: None for hour in range(8, 24)} for date in dates}
@@ -292,7 +318,7 @@ def get_schedule():
         if date in grouped_schedule and hour in grouped_schedule[date]:
             grouped_schedule[date][hour] = {"student_name": student_name}
 
-    return render_template('schedule.html', username=username, schedule=grouped_schedule)
+    return render_template('schedule.html', username=username, schedule=grouped_schedule, current_week=week_offset)
 
 @app.route('/schedule/toggle', methods=['POST'])
 def toggle_schedule():

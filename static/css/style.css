@@ -59,11 +59,15 @@ body {
 
 .schedule-input {
     width: 100%;
-    padding: 4px;
-    border: 1px solid transparent;
-    background: white;
+    height: 100%;
+    padding: 8px;
+    border: none;
     font-size: 13px;
     transition: all 0.3s ease;
+    box-sizing: border-box;
+    background-color: transparent; /* 确保输入框背景透明 */
+    position: relative; /* 添加定位属性 */
+    z-index: 2; /* 确保输入框在上层 */
 }
 
 .schedule-input:focus {
@@ -73,11 +77,13 @@ body {
 }
 
 .booked {
-    background-color: #e8f4f8;
+    background-color: #ffcccc !important;
+    position: relative; /* 添加定位属性 */
 }
 
 .available {
-    background-color: #ffffff;
+    background-color: #ccffcc !important;
+    position: relative; /* 添加定位属性 */
 }
 
 .table-responsive {
@@ -91,23 +97,71 @@ table {
     min-width: 800px;
     background: white;
     border-radius: 4px;
-    border-collapse: separate;
+    border-collapse: collapse;
     border-spacing: 0;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ddd;
 }
 
 th, td {
-    padding: 8px;
-    text-align: left;
+    padding: 0;
+    text-align: center;
     vertical-align: middle;
-    border-bottom: 2px solid #ddd;
+    border-right: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
     font-size: 13px;
+    height: 40px;
+    position: relative;
 }
 
-table th {
-    background-color: #f5f5f5 !important;
-    font-weight: 600;
-    text-align: center;
+th:last-child, td:last-child {
+    border-right: none;
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+td:first-child {
+    width: 80px;
+    padding: 8px;
+}
+
+th:not(:first-child), td:not(:first-child) {
+    width: calc((100% - 80px) / 7);
+}
+
+.booked, .available {
+    margin: 0;
+    padding: 8px;
+    border: none;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    position: relative; /* 添加定位属性 */
+}
+
+.booked input, .available input {
+    background-color: transparent; /* 确保输入框背景透明 */
+    position: relative;
+    z-index: 2;
+    width: 100%;
+    height: 100%;
+}
+
+.booked {
+    background-color: #ffcccc;
+}
+
+.available {
+    background-color: #ccffcc;
+}
+
+table thead th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+    padding: 8px;
 }
 
 td {
@@ -281,6 +335,29 @@ th {
     color: #721c24;
 }
 
+/* 周导航按钮 */
+.week-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.nav-btn {
+    padding: 8px 20px;
+    background: #87CEEB;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.nav-btn:hover {
+    background: #5F9EA0;
+}
+
 /* 响应式调整 */
 @media (max-width: 768px) {
     .search-bar {
@@ -378,6 +455,122 @@ th {
 
 .modal-btn-cancel:hover {
     background-color: #7f8c8d;
+}
+
+/* 周导航按钮 */
+.week-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.nav-btn {
+    padding: 8px 20px;
+    background: #87CEEB;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.nav-btn:hover {
+    background: #5F9EA0;
+}
+
+/* 响应式调整 */
+@media (max-width: 768px) {
+    .search-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .search-bar input {
+        max-width: none;
+    }
+
+    .action-buttons {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .action-buttons input {
+        width: 100%;
+    }
+}
+
+/* 欢迎标题区域 */
+.welcome-header {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-header h1 {
+    font-size: 24px;
+    color: #333;
+    margin: 0 0 10px 0;
+}
+
+.date-display {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.current-date {
+    font-size: 14px;
+    color: #888;
+}
+
+/* 周导航按钮 */
+.week-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.nav-btn {
+    padding: 8px 20px;
+    background: #87CEEB;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.nav-btn:hover {
+    background: #5F9EA0;
+}
+
+/* 周导航按钮 */
+.week-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.nav-btn {
+    padding: 8px 20px;
+    background: #87CEEB;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.nav-btn:hover {
+    background: #5F9EA0;
 }
 
 /* 响应式调整 */
