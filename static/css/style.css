@@ -169,7 +169,8 @@ th:not(:first-child), td:not(:first-child) {
 }
 
 .available {
-    background-color: #ccffcc;
+    background-color: #e6f7ff !important;
+    position: relative; /* 添加定位属性 */
 }
 
 table thead th {
