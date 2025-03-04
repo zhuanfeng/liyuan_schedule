@@ -250,17 +250,16 @@ def schedule_for_admin():
     connection.close()
 
     # 获取周偏移量参数
-    week_param = request.args.get('week')
+    week_param = request.args.get('week', '0')
+    current_week = int(week_param)
     
     # 获取当前周的日期范围
     today = datetime.date.today()
     monday = today - datetime.timedelta(days=today.weekday())
     
     # 根据参数调整周数
-    if week_param == 'prev':
-        monday = monday - datetime.timedelta(days=7)
-    elif week_param == 'next':
-        monday = monday + datetime.timedelta(days=7)
+    if current_week != 0:
+        monday = monday + datetime.timedelta(days=7 * current_week)
     
     dates = [monday + datetime.timedelta(days=i) for i in range(7)]
 
@@ -275,7 +274,7 @@ def schedule_for_admin():
         if date in grouped_schedule and hour in grouped_schedule[date]:
             grouped_schedule[date][hour] = {"student_name": student_name}
 
-    return render_template('schedule_for_admin.html', username=target_username, schedule=grouped_schedule)
+    return render_template('schedule_for_admin.html', username=target_username, schedule=grouped_schedule, current_week=current_week)
 
 @app.route('/schedule', methods=['GET'])
 def get_schedule():

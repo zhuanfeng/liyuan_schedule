@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Schedule (View Only)</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 </head>
 <body>
     <div class="sidebar">
@@ -50,8 +51,8 @@
                 </tbody>
             </table>
             <div class="week-navigation">
-                <button class="nav-btn" onclick="window.location.href='?week=prev'">上一周</button>
-                <button class="nav-btn" onclick="window.location.href='?week=next'">下一周</button>
+                <button class="nav-btn" onclick="window.location.href='?week={{ current_week - 1 }}&username={{ username }}'">上一周</button>
+                <button class="nav-btn" onclick="window.location.href='?week={{ current_week + 1 }}&username={{ username }}'">下一周</button>
             </div>
         </div>
     </div>
