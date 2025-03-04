@@ -1,0 +1,177 @@
+/* 管理员查看课程表的专用样式 */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f9f9f9;
+    margin: 0;
+    padding: 0;
+    display: flex;
+}
+
+/* 侧边栏样式 */
+.sidebar {
+    width: 180px;
+    background: #2c3e50;
+    color: white;
+    height: 100vh;
+    padding: 12px;
+    position: fixed;
+}
+
+.sidebar h2 {
+    text-align: center;
+    font-size: 14px;
+    margin-bottom: 12px;
+}
+
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+
+.sidebar ul li {
+    padding: 6px;
+    margin-bottom: 2px;
+}
+
+.sidebar ul li.active {
+    background: #34495e;
+}
+
+.sidebar ul li a {
+    text-decoration: none;
+    color: white;
+    display: block;
+    font-size: 13px;
+}
+
+/* 主内容区域 */
+.main-content {
+    margin-left: 190px;
+    padding: 12px;
+    flex: 1;
+    width: calc(100vw - 210px);
+}
+
+.schedule-container {
+    margin: 20px;
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    min-width: 800px;
+    background: white;
+    border-radius: 4px;
+    border-collapse: collapse;
+    border-spacing: 0;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e0e0e0;
+}
+
+th, td {
+    padding: 8px;
+    text-align: center;
+    vertical-align: middle;
+    border: 0.5px solid #f5f5f5;
+    font-size: 13px;
+    height: 40px;
+}
+
+th {
+    background-color: #f5f5f5;
+    font-weight: bold;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+th:last-child, td:last-child {
+    border-right: 1px solid #f0f0f0;
+}
+
+th:not(:first-child), td:not(:first-child) {
+    width: calc((100% - 80px) / 7);
+}
+
+tr:last-child td {
+    border-bottom: none;
+}
+
+td:first-child {
+    width: 80px;
+    padding: 8px;
+    border-right: 1px solid #f0f0f0;
+}
+
+td:nth-child(4) {
+    border-right: 1px solid #f0f0f0;
+}
+
+.booked {
+    background-color: #ffcccc !important;
+    position: relative;
+    margin: 0;
+    padding: 8px;
+    border: none;
+    width: 100%;
+    height: 100%;
+    transition: background-color 0.3s ease;
+}
+
+.available {
+    background-color: #e6f7ff !important;
+    position: relative;
+    margin: 0;
+    padding: 8px;
+    border: none;
+    width: 100%;
+    height: 100%;
+    transition: background-color 0.3s ease;
+}
+
+/* 周导航按钮 */
+.week-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.nav-btn {
+    padding: 8px 20px;
+    background: #3498db;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+}
+
+.nav-btn:hover {
+    background: #2980b9;
+}
+
+/* 欢迎头部样式 */
+.welcome-header {
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.welcome-header h1 {
+    font-size: 24px;
+    color: #333;
+    margin: 0 0 10px 0;
+}
+
+.date-display {
+    font-size: 16px;
+    color: #666;
+    margin-bottom: 5px;
+}
+
+.current-date {
+    font-size: 14px;
+    color: #888;
+}
