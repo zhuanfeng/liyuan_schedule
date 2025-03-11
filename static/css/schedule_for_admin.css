@@ -73,7 +73,7 @@ th, td {
     text-align: center;
     vertical-align: middle;
     border-bottom: 2px solid white;
-    border-right: none;
+    border-right: 2px solid white;
     font-size: 13px;
     height: 40px;
 }
@@ -100,7 +100,7 @@ tr:last-child td {
 td:first-child {
     width: 80px;
     padding: 8px;
-    border-right: none; /* 移除第一列的右边框 */
+    border-right: 2px solid white; /* 保留第一列的右边框 */
 }
 
 /* 移除第四列的右边框 */
