@@ -7,49 +7,11 @@ body {
     display: flex;
 }
 
-/* 侧边栏样式 */
-.sidebar {
-    width: 180px;
-    background: #2c3e50;
-    color: white;
-    height: 100vh;
-    padding: 12px;
-    position: fixed;
-}
-
-.sidebar h2 {
-    text-align: center;
-    font-size: 14px;
-    margin-bottom: 12px;
-}
-
-.sidebar ul {
-    list-style: none;
-    padding: 0;
-}
-
-.sidebar ul li {
-    padding: 6px;
-    margin-bottom: 2px;
-}
-
-.sidebar ul li.active {
-    background: #34495e;
-}
-
-.sidebar ul li a {
-    text-decoration: none;
-    color: white;
-    display: block;
-    font-size: 13px;
-}
-
 /* 主内容区域 */
 .main-content {
-    margin-left: 190px;
     padding: 12px;
     flex: 1;
-    width: calc(100vw - 210px);
+    width: 100%;
 }
 
 .schedule-container {

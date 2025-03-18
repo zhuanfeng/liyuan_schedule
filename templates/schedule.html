@@ -7,13 +7,15 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <div class="sidebar">
-        <h2>系统名称</h2>
-        <ul>
-            <li><a href="/">首页</a></li>
-            <li class="active"><a href="#">周期表</a></li>
-            <li><a href="/">管理员</a></li>
-        </ul>
+    <!-- 头像按钮和下拉菜单 -->
+    <div class="avatar-dropdown">
+        <button class="avatar-btn" onclick="toggleDropdown()">
+            <img src="{{ url_for('static', filename='img/default-avatar.jpg') }}" alt="头像" class="avatar-img">
+        </button>
+        <div class="dropdown-menu" id="userDropdown">
+            <div class="dropdown-item">{{ username }}</div>
+            <a href="{{ url_for('logout') }}" class="dropdown-item logout-btn">退出登录</a>
+        </div>
     </div>
     <div class="main-content">
         <div class="welcome-header">
@@ -56,5 +58,23 @@
             </div>
         </div>
     </div>
+    <script>
+        function toggleDropdown() {
+            document.getElementById('userDropdown').classList.toggle('show');
+        }
+
+        // 点击页面其他地方关闭下拉菜单
+        window.onclick = function(event) {
+            if (!event.target.matches('.avatar-btn') && !event.target.matches('.avatar-img')) {
+                var dropdowns = document.getElementsByClassName('dropdown-menu');
+                for (var i = 0; i < dropdowns.length; i++) {
+                    var openDropdown = dropdowns[i];
+                    if (openDropdown.classList.contains('show')) {
+                        openDropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+    </script>
 </body>
 </html>

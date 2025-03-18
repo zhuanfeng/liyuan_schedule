@@ -404,6 +404,11 @@ def add_user_to_db(username, password):
 
     return redirect(url_for('admin'))
 
+@app.route('/logout')
+def logout():
+    session.clear()  # 清除所有session数据
+    return redirect(url_for('login'))
+
 
 if __name__ == '__main__':
     app.run(debug=True)
