@@ -7,6 +7,25 @@ body {
     display: flex;
 }
 
+/* 返回按钮样式 */
+.back-btn {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 8px 16px;
+    background: #87CEEB;
+    color: white;
+    text-decoration: none;
+    border-radius: 4px;
+    font-size: 14px;
+    transition: background-color 0.3s ease;
+    z-index: 1000;
+}
+
+.back-btn:hover {
+    background: #5F9EA0;
+}
+
 /* 主内容区域 */
 .main-content {
     padding: 12px;

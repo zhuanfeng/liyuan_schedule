@@ -9,21 +9,21 @@
 </head>
 <body>
     <div class="wrapper">
-        <!-- 侧边栏 -->
-        <aside class="sidebar">
-            <h2 class="logo">系统名称</h2>
-            <ul>
-                <li><a href="{{ url_for('login') }}">首页</a></li>
-                <li class="active"><a href="#">管理员</a></li>
-                <li><a href="{{ url_for('login') }}">周课表</a></li>
-            </ul>
-        </aside>
 
         <!-- 主要内容 -->
         <main class="main-content">
             <header class="topbar">
                 <span class="welcome-text">欢迎您，{{ session['username'] }}</span>
                 <span class="notifications">🔔</span>
+                <div class="avatar-dropdown">
+                    <button class="avatar-btn" onclick="toggleDropdown()">
+                        <img src="{{ url_for('static', filename='img/default-avatar.jpg') }}" alt="Avatar" class="avatar-img">
+                    </button>
+                    <div class="dropdown-menu" id="dropdownMenu">
+                        <span class="dropdown-item">{{ session['username'] }}</span>
+                        <a href="{{ url_for('logout') }}" class="dropdown-item logout-btn">退出登录</a>
+                    </div>
+                </div>
             </header>
 
             <section class="content">
@@ -110,5 +110,23 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function toggleDropdown() {
+            const dropdownMenu = document.getElementById('dropdownMenu');
+            dropdownMenu.classList.toggle('show');
+        }
+
+        // 点击页面其他地方关闭下拉菜单
+        window.onclick = function(event) {
+            if (!event.target.matches('.avatar-btn') && !event.target.matches('.avatar-img')) {
+                const dropdowns = document.getElementsByClassName('dropdown-menu');
+                for (let dropdown of dropdowns) {
+                    if (dropdown.classList.contains('show')) {
+                        dropdown.classList.remove('show');
+                    }
+                }
+            }
+        }
+    </script>
 </body>
 </html>
