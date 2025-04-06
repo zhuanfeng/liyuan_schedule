@@ -409,6 +409,107 @@ def logout():
     session.clear()  # 清除所有session数据
     return redirect(url_for('login'))
 
+@app.route('/profile', methods=['GET', 'POST'])
+def profile():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    
+    username = session['username']
+    connection = get_db_connection()
+    if not connection:
+        return render_template('profile.html', error="数据库连接错误")
+    
+    if request.method == 'POST':
+        subject = request.form.get('subject')
+        address = request.form.get('address')
+        
+        cursor = connection.cursor()
+        query = "UPDATE users SET subject = %s, address = %s WHERE username = %s"
+        try:
+            cursor.execute(query, (subject, address, username))
+            connection.commit()
+            flash("个人信息更新成功！", "success")
+        except Exception as e:
+            flash(f"更新失败：{str(e)}", "error")
+        finally:
+            cursor.close()
+    
+    cursor = connection.cursor(dictionary=True)
+    query = "SELECT username, subject, address FROM users WHERE username = %s"
+    cursor.execute(query, (username,))
+    user_info = cursor.fetchone()
+    cursor.close()
+    connection.close()
+    
+    return render_template('profile.html', user_info=user_info)
+
+@app.route('/change_password', methods=['GET', 'POST'])
+def change_password():
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    
+    if request.method == 'POST':
+        old_password = request.form.get('old_password')
+        new_password = request.form.get('new_password')
+        confirm_password = request.form.get('confirm_password')
+        
+        if not all([old_password, new_password, confirm_password]):
+            return render_template('change_password.html', error="请填写所有字段")
+        
+        if new_password != confirm_password:
+            return render_template('change_password.html', error="新密码和确认密码不匹配")
+        
+        username = session['username']
+        connection = get_db_connection()
+        if not connection:
+            return render_template('change_password.html', error="数据库连接错误")
+        
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT password_hash FROM users WHERE username = %s"
+        cursor.execute(query, (username,))
+        user = cursor.fetchone()
+        
+        if not user or not bcrypt.check_password_hash(user['password_hash'], old_password):
+            cursor.close()
+            connection.close()
+            return render_template('change_password.html', error="原密码错误")
+        
+        hashed_password = bcrypt.generate_password_hash(new_password).decode('utf-8')
+        update_query = "UPDATE users SET password_hash = %s WHERE username = %s"
+        cursor.execute(update_query, (hashed_password, username))
+        connection.commit()
+        cursor.close()
+        connection.close()
+        
+        return render_template('change_password.html', success="密码修改成功")
+    
+    return render_template('change_password.html')
+
+def init_db():
+    connection = get_db_connection()
+    if not connection:
+        return
+    
+    cursor = connection.cursor()
+    try:
+        # 检查列是否存在
+        cursor.execute("SHOW COLUMNS FROM users LIKE 'subject'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE users ADD COLUMN subject VARCHAR(50) DEFAULT NULL")
+        
+        cursor.execute("SHOW COLUMNS FROM users LIKE 'address'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE users ADD COLUMN address VARCHAR(200) DEFAULT NULL")
+        
+        connection.commit()
+    except Exception as e:
+        print(f"初始化数据库时出错: {str(e)}")
+    finally:
+        cursor.close()
+        connection.close()
+
+# 在应用启动时初始化数据库
+init_db()
 
 if __name__ == '__main__':
     app.run(debug=True)

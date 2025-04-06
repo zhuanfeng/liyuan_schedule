@@ -5,6 +5,58 @@ body {
     margin: 0;
     padding: 0;
     display: flex;
+    min-height: 100vh;
+}
+
+/* 左侧菜单样式 */
+.sidebar {
+    width: 200px;
+    background-color: #f8f9fa;
+    position: fixed;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    z-index: 100;
+}
+
+.sidebar-menu {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-menu li {
+    margin-bottom: 10px;
+}
+
+.sidebar-menu a {
+    display: block;
+    padding: 12px 15px;
+    color: #333;
+    text-decoration: none;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+    font-size: 14px;
+}
+
+.sidebar-menu a:hover {
+    background-color: #e9ecef;
+    color: #4169E1;
+}
+
+.sidebar-menu a.active {
+    background-color: #4169E1;
+    color: white;
+}
+
+/* 主内容区域 */
+.main-content {
+    margin-left: 220px;
+    padding: 20px;
+    flex: 1;
+    width: calc(100% - 220px);
 }
 
 /* 头像按钮样式 */
@@ -68,13 +120,6 @@ body {
 
 .logout-btn {
     color: #e74c3c;
-}
-
-/* 主内容 */
-.main-content {
-    padding: 12px;
-    flex: 1;
-    width: 100%;
 }
 
 .schedule-container {
@@ -553,8 +598,6 @@ td {
     right: 12px;
     z-index: 1000;
 }
-
-
 
 .dropdown-menu {
     display: none;
