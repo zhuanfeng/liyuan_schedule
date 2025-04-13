@@ -92,28 +92,8 @@ def login():
         if username == "小荔":
             return redirect(url_for('admin'))
 
-        # Fetch schedule for the logged-in user
-        connection = get_db_connection()
-        if not connection:
-            return jsonify({"message": "Database connection error."}), 500
-
-        cursor = connection.cursor(dictionary=True)
-        query = "SELECT date, hour, student_name FROM schedule WHERE username = %s"
-        cursor.execute(query, (username,))
-        schedule = cursor.fetchall()
-        cursor.close()
-        connection.close()
-
-        # Group schedule by date for easier rendering
-        grouped_schedule = {}
-        for entry in schedule:
-            date = entry['date']
-            if date not in grouped_schedule:
-                grouped_schedule[date] = []
-            grouped_schedule[date].append({"hour": entry['hour'], "student_name": entry['student_name']})
-
-        # Use redirect to go to the schedule page after successful login
-        return redirect(url_for('get_schedule'))
+        # 跳转到课表页面
+        return redirect(url_for('update_schedule'))
 
     return render_template('login.html', error="Invalid username or password")
 
@@ -286,11 +266,44 @@ def schedule_for_admin():
                          current_week=current_week,
                          teacher_info=teacher_info)
 
-@app.route('/schedule', methods=['GET'])
-def get_schedule():
+@app.route('/schedule', methods=['GET', 'POST'])
+def update_schedule():
     if 'username' not in session:
         return jsonify({"success": False, "message": "用户未登录."}), 403
 
+    if request.method == 'POST':
+        data = request.get_json()
+        date = data.get('date')
+        hour = data.get('hour')
+        student_name = data.get('student_name')
+        username = session['username']
+
+        connection = get_db_connection()
+        if not connection:
+            return jsonify({"success": False, "message": "数据库连接错误."}), 500
+
+        cursor = connection.cursor()
+        try:
+            if student_name:  # 如果有学生名字，更新或插入
+                query = """
+                    INSERT INTO schedule (username, date, hour, student_name)
+                    VALUES (%s, %s, %s, %s)
+                    ON DUPLICATE KEY UPDATE student_name = %s
+                """
+                cursor.execute(query, (username, date, hour, student_name, student_name))
+            else:  # 如果没有学生名字，删除记录
+                query = "DELETE FROM schedule WHERE username = %s AND date = %s AND hour = %s"
+                cursor.execute(query, (username, date, hour))
+            
+            connection.commit()
+            return jsonify({"success": True})
+        except Exception as e:
+            return jsonify({"success": False, "message": str(e)}), 500
+        finally:
+            cursor.close()
+            connection.close()
+
+    # GET 请求的处理保持不变
     username = session['username']
     connection = get_db_connection()
     if not connection:
@@ -338,91 +351,6 @@ def get_schedule():
                          schedule=grouped_schedule, 
                          current_week=week_offset,
                          teacher_info=teacher_info)
-
-@app.route('/schedule/toggle', methods=['POST'])
-def toggle_schedule():
-    if 'username' not in session:
-        return jsonify({"success": False, "message": "用户未登录."}), 403
-
-    data = request.get_json()
-    date = data['date']
-    hour = data['hour']
-    username = session['username']
-
-    connection = get_db_connection()
-    if not connection:
-        return "Database connection error.", 500
-
-    cursor = connection.cursor()
-    # Check if the slot is booked
-    cursor.execute("SELECT student_name FROM schedule WHERE username = %s AND date = %s AND hour = %s", (username, date, hour))
-    result = cursor.fetchone()
-
-    if result:
-        # If booked, delete the entry
-        cursor.execute("DELETE FROM schedule WHERE username = %s AND date = %s AND hour = %s", (username, date, hour))
-    else:
-        # If not booked, insert a new entry (you can modify the student_name as needed)
-        cursor.execute("INSERT INTO schedule (username, date, hour, student_name) VALUES (%s, %s, %s, %s)", (username, date, hour, "Student Name"))
-
-    connection.commit()
-    cursor.close()
-    connection.close()
-    return "Success", 200
-
-@app.route('/schedule', methods=['POST', 'DELETE'])
-def update_schedule():
-    data = request.get_json()
-    date = data.get('date')
-    hour = data.get('hour')
-
-    if 'username' not in session:
-        return jsonify({"success": False, "message": "用户未登录."}), 403
-
-    username = session['username']
-    connection = get_db_connection()
-    if not connection:
-        return jsonify({"success": False, "message": "Database connection error."}), 500
-
-    cursor = connection.cursor()
-    if request.method == 'POST':
-        # 添加或更新学生名字
-        student_name = data.get('student_name')
-        query = """
-            INSERT INTO schedule (username, date, hour, student_name)
-            VALUES (%s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE student_name = %s
-        """
-        cursor.execute(query, (username, date, hour, student_name, student_name))
-    elif request.method == 'DELETE':
-        # 删除学生名字
-        query = "DELETE FROM schedule WHERE username = %s AND date = %s AND hour = %s"
-        cursor.execute(query, (username, date, hour))
-
-    connection.commit()
-    cursor.close()
-    connection.close()
-
-    return jsonify({"success": True})
-
-def add_user_to_db(username, password):
-
-    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-
-    connection = get_db_connection()
-    cursor = connection.cursor()
-    query = "INSERT INTO users (username, password_hash) VALUES (%s, %s)"
-    try:
-        cursor.execute(query, (username, hashed_password))
-        connection.commit()
-        flash(f"Teacher '{username}' added successfully!", 'success')
-    except Exception as e:
-        flash(f"Error adding teacher: {str(e)}", 'error')
-    finally:
-        cursor.close()
-        connection.close()
-
-    return redirect(url_for('admin'))
 
 @app.route('/logout')
 def logout():

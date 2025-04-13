@@ -73,7 +73,7 @@
     <div class="sidebar">
         <ul class="sidebar-menu">
             <li><a href="{{ url_for('profile') }}">个人信息</a></li>
-            <li><a href="{{ url_for('get_schedule') }}" class="active">查看课表</a></li>
+            <li><a href="{{ url_for('update_schedule') }}" class="active">查看课表</a></li>
             <li><a href="{{ url_for('change_password') }}">修改密码</a></li>
         </ul>
     </div>
@@ -160,6 +160,50 @@
                 }
             }
         }
+
+        // 添加输入框的自动保存功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const inputs = document.querySelectorAll('.schedule-input');
+            inputs.forEach(input => {
+                input.addEventListener('blur', function() {
+                    const date = this.dataset.date;
+                    const hour = this.dataset.hour;
+                    const studentName = this.value;
+
+                    fetch('/schedule', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            date: date,
+                            hour: hour,
+                            student_name: studentName
+                        })
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            // 更新单元格样式
+                            const cell = this.parentElement;
+                            if (studentName) {
+                                cell.classList.remove('available');
+                                cell.classList.add('booked');
+                            } else {
+                                cell.classList.remove('booked');
+                                cell.classList.add('available');
+                            }
+                        } else {
+                            alert('保存失败：' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('保存失败，请重试');
+                    });
+                });
+            });
+        });
     </script>
 </body>
 </html>
