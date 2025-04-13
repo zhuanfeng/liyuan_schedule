@@ -42,6 +42,9 @@
         .main-content {
             margin-left: 220px;
             padding: 20px;
+            overflow: hidden;
+            width: calc(100% - 240px);
+            min-height: 100vh;
         }
         .teacher-info {
             background: white;
@@ -65,6 +68,142 @@
         }
         .value {
             color: #333;
+        }
+        /* 添加表格样式 */
+        .schedule-container {
+            margin-top: 20px;
+            margin-bottom: 20px;
+            margin-right: 10px;
+            width: calc(100% - 10px);
+            max-width: calc(100% - 10px);
+            position: relative;
+            border: 1px solid #f0f0f0;
+            overflow-x: scroll !important;
+            display: block;
+            padding-bottom: 20px;
+            height: auto;
+        }
+        
+        /* 自定义滚动条样式 */
+        .schedule-container::-webkit-scrollbar {
+            height: 12px;
+            background-color: #f0f0f0;
+        }
+        .schedule-container::-webkit-scrollbar-thumb {
+            background-color: #4169E1;
+            border-radius: 6px;
+        }
+        .schedule-container::-webkit-scrollbar-track {
+            background-color: #f0f0f0;
+            border-radius: 6px;
+        }
+        
+        /* 设置Firefox滚动条 */
+        @-moz-document url-prefix() {
+            .schedule-container {
+                scrollbar-width: thin;
+                scrollbar-color: #4169E1 #f0f0f0;
+            }
+        }
+        table {
+            width: 100%;
+            min-width: 100%;
+            border-collapse: collapse;
+            table-layout: auto;
+            margin-bottom: 10px;
+        }
+        th, td {
+            padding: 6px 4px;
+            text-align: center;
+            border: 1px solid #ddd;
+            min-width: 90px;
+            max-width: none;
+            height: auto;
+            position: relative;
+            word-break: break-all;
+            word-wrap: break-word;
+        }
+        th {
+            background-color: #f5f5f5;
+        }
+        .schedule-input {
+            width: 100%;
+            padding: 3px;
+            border: none;
+            background: transparent;
+            text-align: center;
+            min-height: 22px;
+            overflow: visible;
+            font-size: 13px;
+        }
+        td:first-child {
+            width: 80px;
+            min-width: 80px;
+        }
+        .schedule-input:focus {
+            outline: none;
+            background-color: #f0f8ff;
+        }
+        .booked {
+            background-color: #e6f7ff;
+        }
+        .available {
+            background-color: #f9f9f9;
+        }
+        .week-navigation {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .nav-btn {
+            padding: 8px 16px;
+            margin: 0 10px;
+            background-color: #4169E1;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .nav-btn:hover {
+            background-color: #3154b0;
+        }
+        /* 增加表格下方的滚动条空间 */
+        .scrollbar-placeholder {
+            height: 25px !important;
+            width: 100%;
+            display: block;
+            visibility: visible !important;
+            margin-top: 20px;
+        }
+        /* 表格固定头部样式，确保头部不滚动 */
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            background-color: white;
+        }
+        
+        /* 固定滚动条 */
+        .fixed-scrollbar {
+            position: sticky;
+            bottom: 0;
+            width: 100%;
+            height: 15px; 
+            background-color: #f0f0f0;
+            z-index: 1000;
+            overflow-x: auto;
+        }
+        /* 添加悬浮滚动条 */
+        .floating-scrollbar {
+            position: fixed;
+            bottom: 0;
+            left: 220px;
+            width: calc(100% - 250px);
+            height: 20px;
+            background-color: rgba(240, 240, 240, 0.9);
+            z-index: 1000;
+            overflow-x: auto;
+            overflow-y: hidden;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
         }
     </style>
 </head>
@@ -137,10 +276,11 @@
                     {% endfor %}
                 </tbody>
             </table>
-            <div class="week-navigation">
-                <button class="nav-btn" onclick="window.location.href='?week={{ current_week - 1 }}'">上一周</button>
-                <button class="nav-btn" onclick="window.location.href='?week={{ current_week + 1 }}'">下一周</button>
-            </div>
+            <div class="scrollbar-placeholder" style="height: 20px; width: 100%;"></div>
+        </div>
+        <div class="week-navigation">
+            <button class="nav-btn" onclick="window.location.href='?week={{ current_week - 1 }}'">上一周</button>
+            <button class="nav-btn" onclick="window.location.href='?week={{ current_week + 1 }}'">下一周</button>
         </div>
     </div>
     <script>
@@ -161,10 +301,272 @@
             }
         }
 
+        // 动态调整单元格宽度
+        function adjustCellWidths() {
+            const inputs = document.querySelectorAll('.schedule-input');
+            const scheduleContainer = document.querySelector('.schedule-container');
+            const table = scheduleContainer.querySelector('table');
+            const mainContent = document.querySelector('.main-content');
+            const mainContentWidth = mainContent.offsetWidth;
+            
+            // 计算每列的默认宽度（平均分配）
+            const defaultColCount = 8; // 7天+小时列
+            const defaultColWidth = Math.floor((mainContentWidth - 80) / defaultColCount); // 增加边距以缩小列宽度
+            
+            // 先重置所有单元格的宽度，让它们使用默认宽度
+            const allCells = document.querySelectorAll('td:not(:first-child)');
+            allCells.forEach(cell => {
+                cell.style.minWidth = defaultColWidth + 'px';
+                cell.style.width = defaultColWidth + 'px';
+            });
+            
+            // 设置第一列（小时列）的宽度
+            const hourCells = document.querySelectorAll('td:first-child');
+            hourCells.forEach(cell => {
+                cell.style.minWidth = '50px';
+                cell.style.width = '50px';
+            });
+            
+            // 然后只为那些内容较长的单元格调整宽度
+            inputs.forEach(input => {
+                if (!input.value || input.value.length <= 10) {
+                    return; // 如果内容不长，使用默认宽度
+                }
+                
+                // 使用临时元素计算实际文本宽度
+                const tempSpan = document.createElement('span');
+                tempSpan.style.visibility = 'hidden';
+                tempSpan.style.position = 'absolute';
+                tempSpan.style.whiteSpace = 'nowrap';
+                tempSpan.style.font = window.getComputedStyle(input).font;
+                tempSpan.textContent = input.value || '';
+                document.body.appendChild(tempSpan);
+                
+                // 计算需要的宽度，并加上一些额外空间
+                const textWidth = tempSpan.offsetWidth;
+                document.body.removeChild(tempSpan);
+                
+                // 只有当文本宽度明显超过默认列宽时才调整
+                if (textWidth > defaultColWidth - 20) {
+                    const cellWidth = textWidth + 30; // 文本宽度加30px边距
+                    input.parentElement.style.minWidth = cellWidth + 'px';
+                    input.parentElement.style.width = cellWidth + 'px';
+                }
+                
+                // 如果内容很长，允许自动换行
+                if (textWidth > 200) {
+                    input.parentElement.style.whiteSpace = 'normal';
+                    input.style.height = 'auto';
+                }
+            });
+            
+            // 在所有单元格调整完成后更新容器宽度
+            if (typeof updateContainerWidth === 'function') {
+                updateContainerWidth();
+            }
+        }
+
         // 添加输入框的自动保存功能
         document.addEventListener('DOMContentLoaded', function() {
             const inputs = document.querySelectorAll('.schedule-input');
+            const scheduleContainer = document.querySelector('.schedule-container');
+            
+            // 使滚动条一直显示在页面上
+            function makeScrollbarAlwaysVisible() {
+                // 将表格容器添加固定定位类
+                scheduleContainer.style.position = 'relative';
+                
+                // 创建一个滚动条样式元素
+                const style = document.createElement('style');
+                style.textContent = `
+                    .schedule-container::-webkit-scrollbar {
+                        height: 15px;
+                        background-color: #f0f0f0;
+                        visibility: visible !important;
+                        display: block !important;
+                    }
+                    .schedule-container::-webkit-scrollbar-thumb {
+                        background-color: #4169E1;
+                        border-radius: 6px;
+                        visibility: visible !important;
+                        display: block !important;
+                    }
+                    /* 添加悬浮滚动条 */
+                    .floating-scrollbar {
+                        position: fixed;
+                        bottom: 0;
+                        left: 220px;
+                        width: calc(100% - 250px);
+                        height: 20px;
+                        background-color: rgba(240, 240, 240, 0.9);
+                        z-index: 1000;
+                        overflow-x: auto;
+                        overflow-y: hidden;
+                        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+                    }
+                    .floating-scrollbar-content {
+                        height: 1px;
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                // 创建一个固定在底部的滚动条
+                const floatingScrollbar = document.createElement('div');
+                floatingScrollbar.className = 'floating-scrollbar';
+                floatingScrollbar.id = 'floatingScrollbar';
+                
+                // 创建占位内容，宽度与表格相同
+                const scrollContent = document.createElement('div');
+                scrollContent.className = 'floating-scrollbar-content';
+                
+                floatingScrollbar.appendChild(scrollContent);
+                document.body.appendChild(floatingScrollbar);
+                
+                // 同步两个滚动条
+                function syncScrollbars() {
+                    const table = scheduleContainer.querySelector('table');
+                    scrollContent.style.width = table.offsetWidth + 'px';
+                    
+                    // 同步滚动位置
+                    floatingScrollbar.onscroll = function() {
+                        if (scheduleContainer.scrollLeft !== this.scrollLeft) {
+                            scheduleContainer.scrollLeft = this.scrollLeft;
+                        }
+                    };
+                    
+                    scheduleContainer.onscroll = function() {
+                        if (floatingScrollbar.scrollLeft !== this.scrollLeft) {
+                            floatingScrollbar.scrollLeft = this.scrollLeft;
+                        }
+                    };
+                }
+                
+                // 初始同步
+                setTimeout(syncScrollbars, 300);
+                
+                // 窗口大小改变时重新同步
+                window.addEventListener('resize', syncScrollbars);
+                
+                return syncScrollbars;
+            }
+            
+            // 初始调用显示固定滚动条
+            const syncScrollbars = makeScrollbarAlwaysVisible();
+            
+            // 确保在调整宽度后，表格容器能检测到内容宽度变化
+            function updateContainerWidth() {
+                const table = scheduleContainer.querySelector('table');
+                const mainContent = document.querySelector('.main-content');
+                
+                // 设置主内容区域宽度，确保不产生水平滚动条
+                mainContent.style.width = 'calc(100% - 240px)';
+                mainContent.style.overflowX = 'hidden';
+                
+                // 表格容器宽度设置为主内容区域宽度
+                const mainContentWidth = mainContent.offsetWidth;
+                scheduleContainer.style.width = 'calc(100% - 10px)'; 
+                scheduleContainer.style.maxWidth = (mainContentWidth - 20) + 'px';
+                
+                // 设置表头单元格宽度与对应的列宽相同
+                const headerCells = document.querySelectorAll('th');
+                const firstRowCells = document.querySelectorAll('tr:nth-child(1) td');
+                
+                for (let i = 0; i < headerCells.length; i++) {
+                    if (i === 0) {
+                        headerCells[i].style.minWidth = '50px';
+                        headerCells[i].style.width = '50px';
+                    } else if (i < firstRowCells.length) {
+                        headerCells[i].style.minWidth = firstRowCells[i].style.minWidth;
+                        headerCells[i].style.width = firstRowCells[i].style.width;
+                    }
+                }
+                
+                // 强制显示滚动条
+                scheduleContainer.style.overflow = '';
+                scheduleContainer.style.overflowX = 'scroll';
+                
+                // 强制刷新滚动条的可见性
+                scheduleContainer.style.display = 'block';
+                
+                // 确保滚动条可见
+                const placeholder = document.querySelector('.scrollbar-placeholder');
+                if (placeholder) {
+                    placeholder.style.height = '25px';
+                    placeholder.style.display = 'block';
+                    placeholder.style.visibility = 'visible';
+                }
+                
+                // 强制浏览器重排确保滚动条可见
+                scheduleContainer.style.opacity = '0.99';
+                setTimeout(() => {
+                    scheduleContainer.style.opacity = '1';
+                    
+                    // 同步固定滚动条
+                    if (typeof syncScrollbars === 'function') {
+                        syncScrollbars();
+                    }
+                }, 0);
+            }
+            
+            // 监听窗口大小变化，更新容器宽度
+            window.addEventListener('resize', function() {
+                updateContainerWidth();
+            });
+            
+            // 初始调整宽度
+            setTimeout(function() {
+                adjustCellWidths();
+                updateContainerWidth();
+            }, 100); // 延迟一下确保内容加载完成
+            
             inputs.forEach(input => {
+                // 输入时动态调整宽度
+                input.addEventListener('input', function() {
+                    const mainContent = document.querySelector('.main-content');
+                    const mainContentWidth = mainContent.offsetWidth;
+                    const defaultColCount = 8; // 7天+小时列
+                    const defaultColWidth = Math.floor((mainContentWidth - 80) / defaultColCount); // 增加边距以缩小列宽度
+                    
+                    // 如果内容不长，恢复默认宽度
+                    if (!this.value || this.value.length <= 10) {
+                        this.parentElement.style.minWidth = defaultColWidth + 'px';
+                        this.parentElement.style.width = defaultColWidth + 'px';
+                        return;
+                    }
+                    
+                    // 使用临时元素计算实际文本宽度
+                    const tempSpan = document.createElement('span');
+                    tempSpan.style.visibility = 'hidden';
+                    tempSpan.style.position = 'absolute';
+                    tempSpan.style.whiteSpace = 'nowrap';
+                    tempSpan.style.font = window.getComputedStyle(this).font;
+                    tempSpan.textContent = this.value || '';
+                    document.body.appendChild(tempSpan);
+                    
+                    // 计算需要的宽度，并加上一些额外空间
+                    const textWidth = tempSpan.offsetWidth;
+                    document.body.removeChild(tempSpan);
+                    
+                    // 只有当文本宽度明显超过默认列宽时才调整
+                    if (textWidth > defaultColWidth - 20) {
+                        const cellWidth = textWidth + 30;
+                        this.parentElement.style.minWidth = cellWidth + 'px';
+                        this.parentElement.style.width = cellWidth + 'px';
+                    } else {
+                        this.parentElement.style.minWidth = defaultColWidth + 'px';
+                        this.parentElement.style.width = defaultColWidth + 'px';
+                    }
+                    
+                    // 如果内容很长，允许自动换行
+                    if (textWidth > 200) {
+                        this.parentElement.style.whiteSpace = 'normal';
+                        this.style.height = 'auto';
+                    }
+                    
+                    // 更新容器宽度以确保滚动条显示正确
+                    updateContainerWidth();
+                });
+                
                 input.addEventListener('blur', function() {
                     const date = this.dataset.date;
                     const hour = this.dataset.hour;
@@ -193,6 +595,10 @@
                                 cell.classList.remove('booked');
                                 cell.classList.add('available');
                             }
+                            // 调整宽度
+                            adjustCellWidths();
+                            // 确保滚动区域更新
+                            updateContainerWidth();
                         } else {
                             alert('保存失败：' + data.message);
                         }
