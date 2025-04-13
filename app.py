@@ -296,7 +296,13 @@ def get_schedule():
     if not connection:
         return render_template('schedule.html', error="Database connection error.")
 
+    # 获取教师基本信息
     cursor = connection.cursor(dictionary=True)
+    query = "SELECT username, subject, address FROM users WHERE username = %s"
+    cursor.execute(query, (username,))
+    teacher_info = cursor.fetchone()
+
+    # 获取课表信息
     query = "SELECT date, hour, student_name FROM schedule WHERE username = %s"
     cursor.execute(query, (username,))
     schedule = cursor.fetchall()
@@ -327,7 +333,11 @@ def get_schedule():
         if date in grouped_schedule and hour in grouped_schedule[date]:
             grouped_schedule[date][hour] = {"student_name": student_name}
 
-    return render_template('schedule.html', username=username, schedule=grouped_schedule, current_week=week_offset)
+    return render_template('schedule.html', 
+                         username=username, 
+                         schedule=grouped_schedule, 
+                         current_week=week_offset,
+                         teacher_info=teacher_info)
 
 @app.route('/schedule/toggle', methods=['POST'])
 def toggle_schedule():
