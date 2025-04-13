@@ -88,7 +88,7 @@ def login():
     if user and bcrypt.check_password_hash(user['password_hash'], password):
         session['username'] = username
 
-        # 特殊逻辑：如果用户名是“小荔”，跳转到 admin 页面
+        # 特殊逻辑：如果用户名是"小荔"，跳转到 admin 页面
         if username == "小荔":
             return redirect(url_for('admin'))
 
@@ -123,7 +123,7 @@ def admin():
     if 'username' not in session:
         return jsonify({"success": False, "message": "用户未登录."}), 403
 
-    # 检查用户名是否为“小荔”
+    # 检查用户名是否为"小荔"
     username = session['username']
     if username != "小荔":
         return render_template('login.html', error="非管理员账户无法进入该页面")
@@ -138,7 +138,7 @@ def admin():
     cursor.close()
     connection.close()
 
-    # 过滤掉“小荔”
+    # 过滤掉"小荔"
     teachers = [teacher for teacher in teachers if teacher['username'] != "小荔"]
 
     return render_template('admin.html', teachers=teachers)
@@ -148,7 +148,7 @@ def add_teacher():
     if 'username' not in session:
         return jsonify({"success": False, "message": "用户未登录."}), 403
 
-    # 检查用户名是否为“小荔”
+    # 检查用户名是否为"小荔"
     username = session['username']
     if username != "小荔":
         return render_template('login.html', error="非管理员账户无法进入该页面")
@@ -178,7 +178,7 @@ def delete_teacher():
     if 'username' not in session:
         return jsonify({"success": False, "message": "用户未登录."}), 403
 
-    # 检查用户名是否为“小荔”
+    # 检查用户名是否为"小荔"
     username = session['username']
     if username != "小荔":
         return render_template('login.html', error="非管理员账户无法进入该页面")
@@ -205,7 +205,7 @@ def update_teacher():
     if 'username' not in session:
         return jsonify({"success": False, "message": "用户未登录."}), 403
 
-    # 检查用户名是否为“小荔”
+    # 检查用户名是否为"小荔"
     username = session['username']
     if username != "小荔":
         return render_template('login.html', error="非管理员账户无法进入该页面")
@@ -242,7 +242,13 @@ def schedule_for_admin():
     if not connection:
         return render_template('schedule_for_admin.html', error="Database connection error.")
 
+    # 获取教师基本信息
     cursor = connection.cursor(dictionary=True)
+    query = "SELECT username, subject, address FROM users WHERE username = %s"
+    cursor.execute(query, (target_username,))
+    teacher_info = cursor.fetchone()
+
+    # 获取课表信息
     query = "SELECT date, hour, student_name FROM schedule WHERE username = %s"
     cursor.execute(query, (target_username,))
     schedule = cursor.fetchall()
@@ -274,7 +280,11 @@ def schedule_for_admin():
         if date in grouped_schedule and hour in grouped_schedule[date]:
             grouped_schedule[date][hour] = {"student_name": student_name}
 
-    return render_template('schedule_for_admin.html', username=target_username, schedule=grouped_schedule, current_week=current_week)
+    return render_template('schedule_for_admin.html', 
+                         username=target_username, 
+                         schedule=grouped_schedule, 
+                         current_week=current_week,
+                         teacher_info=teacher_info)
 
 @app.route('/schedule', methods=['GET'])
 def get_schedule():

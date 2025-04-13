@@ -10,7 +10,21 @@
     <div class="main-content">
         <a href="{{ url_for('admin') }}" class="back-btn">返回管理页面</a>
         <div class="welcome-header">
-            <h1>Schedule for {{ username }}</h1>
+            <h1>教师课表</h1>
+            <div class="teacher-info">
+                <div class="info-item">
+                    <span class="label">教师姓名：</span>
+                    <span class="value">{{ teacher_info.username }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">科目：</span>
+                    <span class="value">{{ teacher_info.subject or '未设置' }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="label">地址：</span>
+                    <span class="value">{{ teacher_info.address or '未设置' }}</span>
+                </div>
+            </div>
             <div class="date-display">工作周期表</div>
             <div class="current-date">日期时间：{{ schedule.keys()|list|first|format_date('%Y年%m月%d日') }}</div>
         </div>
@@ -48,5 +62,44 @@
             </div>
         </div>
     </div>
+
+    <style>
+        .teacher-info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .info-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .info-item:last-child {
+            margin-bottom: 0;
+        }
+        .label {
+            font-weight: bold;
+            width: 80px;
+            color: #666;
+        }
+        .value {
+            color: #333;
+        }
+        .back-btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background-color: #4169E1;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            transition: background-color 0.3s ease;
+        }
+        .back-btn:hover {
+            background-color: #3457D1;
+        }
+    </style>
 </body>
 </html>
