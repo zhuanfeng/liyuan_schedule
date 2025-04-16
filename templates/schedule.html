@@ -48,6 +48,7 @@
             overflow: hidden;
             width: calc(100% - 160px);
             min-height: 100vh;
+            box-sizing: border-box;
         }
         .welcome-header h1 {
             margin-bottom: 5px;  /* 进一步减小标题下方的间距 */
@@ -80,14 +81,24 @@
         /* 添加表格样式 */
         .schedule-container {
             margin: 20px 0;
-            width: 100%;
-            max-width: 100%;
+            width: 100%;  /* 改回100% */
+            max-width: 100%;  /* 改回100% */
             position: relative;
-            border: 1px solid #f0f0f0;
-            overflow-x: auto;
-            display: block;
-            padding-bottom: 20px;
-            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 0;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        
+        .schedule-container:first-of-type {
+            margin-top: 20px;  /* 第一个容器的顶部边距 */
+        }
+        
+        .schedule-container:last-of-type {
+            margin-bottom: 40px;  /* 最后一个容器的底部边距 */
         }
         
         /* 自定义滚动条样式 */
@@ -117,13 +128,14 @@
             min-width: 100%;
             border-collapse: collapse;
             table-layout: auto;
-            margin-bottom: 10px;
+            margin: 0;  /* 移除外边距 */
+            border: none;  /* 移除表格边框 */
         }
         th, td {
-            padding: 6px 4px;
+            padding: 6px 3px;
             text-align: center;
             border: 1px solid #ddd;
-            min-width: 80px;  /* 减小默认宽度 */
+            min-width: 70px;  /* 进一步减小最小宽度 */
             max-width: none;
             height: auto;
             position: relative;
@@ -144,8 +156,8 @@
             font-size: 13px;
         }
         td:first-child {
-            width: 60px;  /* 减小时间列的宽度 */
-            min-width: 60px;
+            width: 50px;  /* 进一步减小时间列的宽度 */
+            min-width: 50px;
         }
         .schedule-input:focus {
             outline: none;
@@ -173,13 +185,26 @@
         .nav-btn:hover {
             background-color: #3154b0;
         }
-        /* 增加表格下方的滚动条空间 */
+        /* 修改表格标题样式 */
+        .week-title {
+            font-size: 18px;
+            color: #333;
+            margin: 0;  /* 移除外边距 */
+            padding: 15px;  /* 增加内边距 */
+            background-color: #f5f5f5;
+            border-bottom: 1px solid #ddd;  /* 添加底部边框 */
+        }
+        /* 修改表格容器样式 */
+        .table-wrapper {
+            padding: 15px;  /* 恢复内边距 */
+            overflow-x: auto;
+            margin: 0 -1px;  /* 添加负边距抵消边框 */
+        }
+        /* 修改滚动条占位符样式 */
         .scrollbar-placeholder {
-            height: 25px !important;
-            width: 100%;
-            display: block;
-            visibility: visible !important;
-            margin-top: 20px;
+            height: 20px;
+            margin: 0;  /* 移除外边距 */
+            padding: 0 15px;  /* 添加左右内边距 */
         }
         /* 表格固定头部样式，确保头部不滚动 */
         thead {
@@ -202,6 +227,31 @@
         /* 添加悬浮滚动条 */
         .floating-scrollbar {
             display: none !important;
+        }
+        .schedule-search {
+            margin: 15px 0;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        .search-select {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            min-width: 100px;
+        }
+        .search-btn {
+            padding: 6px 15px;
+            background-color: #4169E1;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .search-btn:hover {
+            background-color: #3154b0;
         }
     </style>
 </head>
@@ -227,7 +277,7 @@
     </div>
     <div class="main-content">
         <div class="welcome-header">
-            <h1>我的课表</h1>
+            <h1>课程表</h1>
             <div class="teacher-info">
                 <div class="info-item">
                     <span class="label">教师姓名：</span>
@@ -244,38 +294,140 @@
             </div>
             <div class="date-display">工作周期表</div>
             <div class="current-date">日期时间：{{ schedule.keys()|list|first|format_date('%Y年%m月%d日') }}</div>
-        </div>
-        <div class="schedule-container">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Hour</th>
-                        {% for date in schedule.keys() %}
-                        <th>
-                            {{ date|format_date('%m-%d') }}<br>
-                            {{ date|format_date('%A')|translate_weekday }}
-                        </th>
-                        {% endfor %}
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for hour in range(8, 24) %}
-                    <tr>
-                        <td>{{ hour }}:00</td>
-                        {% for date in schedule.keys() %}
-                        <td class="{% if schedule[date][hour] and schedule[date][hour].student_name %}booked{% else %}available{% endif %}">
-                            <input type="text" class="schedule-input" 
-                                data-date="{{ date }}" 
-                                data-hour="{{ hour }}" 
-                                value="{% if schedule[date][hour] and schedule[date][hour].student_name %}{{ schedule[date][hour].student_name }}{% endif %}">
-                        </td>
-                        {% endfor %}
-                    </tr>
+            
+            <!-- 添加搜索功能 -->
+            <div class="schedule-search">
+                <select id="yearSelect" class="search-select" onchange="updateSchedule()">
+                    {% for year in range(2025, 2019, -1) %}
+                    <option value="{{ year }}" {% if selected_year == year %}selected{% endif %}>{{ year }}年</option>
                     {% endfor %}
-                </tbody>
-            </table>
-            <div class="scrollbar-placeholder" style="height: 20px; width: 100%;"></div>
+                </select>
+                <select id="monthSelect" class="search-select" onchange="updateSchedule()">
+                    {% for month in range(1, 13) %}
+                    <option value="{{ month }}" {% if selected_month == month %}selected{% endif %}>{{ month }}月</option>
+                    {% endfor %}
+                </select>
+                <select id="weekSelect" class="search-select" onchange="updateSchedule()">
+                    <option value="">全部周</option>
+                    {% for week in range(1, total_weeks + 1 if total_weeks else 6) %}
+                    <option value="{{ week }}" {% if selected_week == week %}selected{% endif %}>第{{ week }}周</option>
+                    {% endfor %}
+                </select>
+                <button class="search-btn" onclick="updateSchedule()">查询</button>
+            </div>
         </div>
+        {% if selected_week %}
+        <div class="schedule-container">
+            <h2 class="week-title">第{{ selected_week }}周</h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Hour</th>
+                            {% for date in schedule.keys() %}
+                            <th>
+                                {{ date|format_date('%m-%d') }}<br>
+                                {{ date|format_date('%A')|translate_weekday }}
+                            </th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for hour in range(8, 24) %}
+                        <tr>
+                            <td>{{ hour }}:00</td>
+                            {% for date in schedule.keys() %}
+                            <td class="{% if schedule[date][hour] and schedule[date][hour].student_name %}booked{% else %}available{% endif %}">
+                                <input type="text" class="schedule-input" 
+                                    data-date="{{ date }}" 
+                                    data-hour="{{ hour }}" 
+                                    value="{% if schedule[date][hour] and schedule[date][hour].student_name %}{{ schedule[date][hour].student_name }}{% endif %}">
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="scrollbar-placeholder"></div>
+        </div>
+        {% else %}
+            {% if all_weeks_schedule and total_weeks %}
+                {% for week_num in range(1, total_weeks + 1) %}
+                    {% if week_num in all_weeks_schedule %}
+                    <div class="schedule-container">
+                        <h2 class="week-title">第{{ week_num }}周</h2>
+                        <div class="table-wrapper">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Hour</th>
+                                        {% for date in all_weeks_schedule[week_num].keys() %}
+                                        <th>
+                                            {{ date|format_date('%m-%d') }}<br>
+                                            {{ date|format_date('%A')|translate_weekday }}
+                                        </th>
+                                        {% endfor %}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for hour in range(8, 24) %}
+                                    <tr>
+                                        <td>{{ hour }}:00</td>
+                                        {% for date in all_weeks_schedule[week_num].keys() %}
+                                        <td class="{% if all_weeks_schedule[week_num][date][hour] and all_weeks_schedule[week_num][date][hour].student_name %}booked{% else %}available{% endif %}">
+                                            <input type="text" class="schedule-input" 
+                                                data-date="{{ date }}" 
+                                                data-hour="{{ hour }}" 
+                                                value="{% if all_weeks_schedule[week_num][date][hour] and all_weeks_schedule[week_num][date][hour].student_name %}{{ all_weeks_schedule[week_num][date][hour].student_name }}{% endif %}">
+                                        </td>
+                                        {% endfor %}
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="scrollbar-placeholder"></div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% else %}
+                <div class="schedule-container">
+                    <h2 class="week-title">本周</h2>
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Hour</th>
+                                    {% for date in schedule.keys() %}
+                                    <th>
+                                        {{ date|format_date('%m-%d') }}<br>
+                                        {{ date|format_date('%A')|translate_weekday }}
+                                    </th>
+                                    {% endfor %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for hour in range(8, 24) %}
+                                <tr>
+                                    <td>{{ hour }}:00</td>
+                                    {% for date in schedule.keys() %}
+                                    <td class="{% if schedule[date][hour] and schedule[date][hour].student_name %}booked{% else %}available{% endif %}">
+                                        <input type="text" class="schedule-input" 
+                                            data-date="{{ date }}" 
+                                            data-hour="{{ hour }}" 
+                                            value="{% if schedule[date][hour] and schedule[date][hour].student_name %}{{ schedule[date][hour].student_name }}{% endif %}">
+                                    </td>
+                                    {% endfor %}
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="scrollbar-placeholder"></div>
+                </div>
+            {% endif %}
+        {% endif %}
         <div class="week-navigation">
             <button class="nav-btn" onclick="window.location.href='?week={{ current_week - 1 }}'">上一周</button>
             <button class="nav-btn" onclick="window.location.href='?week={{ current_week + 1 }}'">下一周</button>
@@ -301,87 +453,90 @@
 
         // 动态调整单元格宽度
         function adjustCellWidths() {
-            const inputs = document.querySelectorAll('.schedule-input');
-            const scheduleContainer = document.querySelector('.schedule-container');
-            const table = scheduleContainer.querySelector('table');
+            const scheduleContainers = document.querySelectorAll('.schedule-container');
             const mainContent = document.querySelector('.main-content');
             const mainContentWidth = mainContent.offsetWidth;
             
             // 计算每列的默认宽度（平均分配）
             const defaultColCount = 8; // 7天+小时列
-            const defaultColWidth = Math.floor((mainContentWidth - 120) / defaultColCount); // 增加边距以缩小列宽度
+            const defaultColWidth = Math.floor((mainContentWidth - 180) / defaultColCount); // 增加边距
             
-            // 先重置所有单元格的宽度，让它们使用默认宽度
-            const allCells = document.querySelectorAll('td:not(:first-child)');
-            allCells.forEach(cell => {
-                cell.style.minWidth = defaultColWidth + 'px';
-                cell.style.width = defaultColWidth + 'px';
-            });
-            
-            // 设置第一列（小时列）的宽度
-            const hourCells = document.querySelectorAll('td:first-child');
-            hourCells.forEach(cell => {
-                cell.style.minWidth = '60px';
-                cell.style.width = '60px';
-            });
-            
-            // 设置表头单元格宽度
-            const headerCells = document.querySelectorAll('th');
-            headerCells.forEach((cell, index) => {
-                if (index === 0) {
-                    cell.style.minWidth = '60px';
-                    cell.style.width = '60px';
-                } else {
+            scheduleContainers.forEach(container => {
+                // 先重置所有单元格的宽度，让它们使用默认宽度
+                const allCells = container.querySelectorAll('td:not(:first-child)');
+                allCells.forEach(cell => {
                     cell.style.minWidth = defaultColWidth + 'px';
                     cell.style.width = defaultColWidth + 'px';
-                }
+                });
+                
+                // 设置第一列（小时列）的宽度
+                const hourCells = container.querySelectorAll('td:first-child');
+                hourCells.forEach(cell => {
+                    cell.style.minWidth = '50px';  // 减小宽度
+                    cell.style.width = '50px';
+                });
+                
+                // 设置表头单元格宽度
+                const headerCells = container.querySelectorAll('th');
+                headerCells.forEach((cell, index) => {
+                    if (index === 0) {
+                        cell.style.minWidth = '50px';  // 减小宽度
+                        cell.style.width = '50px';
+                    } else {
+                        cell.style.minWidth = defaultColWidth + 'px';
+                        cell.style.width = defaultColWidth + 'px';
+                    }
+                });
             });
         }
 
-        // 确保在调整宽度后，表格容器能检测到内容宽度变化
         function updateContainerWidth() {
-            const table = scheduleContainer.querySelector('table');
+            const scheduleContainers = document.querySelectorAll('.schedule-container');
             const mainContent = document.querySelector('.main-content');
             
             // 设置主内容区域宽度
             mainContent.style.width = 'calc(100% - 160px)';
             mainContent.style.overflowX = 'hidden';
             
-            // 表格容器宽度设置为98%，留出一些边距
-            scheduleContainer.style.width = '98%';
-            scheduleContainer.style.maxWidth = '98%';
-            
-            // 设置表头单元格宽度与对应的列宽相同
-            const headerCells = document.querySelectorAll('th');
-            const firstRowCells = document.querySelectorAll('tr:nth-child(1) td');
-            
-            for (let i = 0; i < headerCells.length; i++) {
-                if (i === 0) {
-                    headerCells[i].style.minWidth = '60px';
-                    headerCells[i].style.width = '60px';
-                } else if (i < firstRowCells.length) {
-                    headerCells[i].style.minWidth = firstRowCells[i].style.minWidth;
-                    headerCells[i].style.width = firstRowCells[i].style.width;
+            scheduleContainers.forEach(container => {
+                // 表格容器宽度设置为100%
+                container.style.width = '100%';
+                container.style.maxWidth = '100%';
+                
+                // 设置表头单元格宽度与对应的列宽相同
+                const headerCells = container.querySelectorAll('th');
+                const firstRowCells = container.querySelectorAll('tr:nth-child(1) td');
+                
+                for (let i = 0; i < headerCells.length; i++) {
+                    if (i === 0) {
+                        headerCells[i].style.minWidth = '50px';  // 减小宽度
+                        headerCells[i].style.width = '50px';
+                    } else if (i < firstRowCells.length) {
+                        headerCells[i].style.minWidth = firstRowCells[i].style.minWidth;
+                        headerCells[i].style.width = firstRowCells[i].style.width;
+                    }
                 }
-            }
-            
-            // 强制显示滚动条
-            scheduleContainer.style.overflow = '';
-            scheduleContainer.style.overflowX = 'auto';
-            
-            // 强制刷新滚动条的可见性
-            scheduleContainer.style.display = 'block';
+                
+                // 强制显示滚动条
+                container.style.overflow = '';
+                container.style.overflowX = 'auto';
+                
+                // 强制刷新滚动条的可见性
+                container.style.display = 'block';
+            });
         }
 
         // 添加输入框的自动保存功能
         document.addEventListener('DOMContentLoaded', function() {
             const inputs = document.querySelectorAll('.schedule-input');
-            const scheduleContainer = document.querySelector('.schedule-container');
+            const scheduleContainers = document.querySelectorAll('.schedule-container');
             
             // 使滚动条一直显示在页面上
             function makeScrollbarAlwaysVisible() {
-                // 将表格容器添加固定定位类
-                scheduleContainer.style.position = 'relative';
+                scheduleContainers.forEach(container => {
+                    // 将表格容器添加固定定位类
+                    container.style.position = 'relative';
+                });
                 
                 // 创建一个滚动条样式元素
                 const style = document.createElement('style');
@@ -398,67 +553,12 @@
                         visibility: visible !important;
                         display: block !important;
                     }
-                    /* 添加悬浮滚动条 */
-                    .floating-scrollbar {
-                        position: fixed;
-                        bottom: 0;
-                        left: 220px;
-                        width: calc(100% - 250px);
-                        height: 20px;
-                        background-color: rgba(240, 240, 240, 0.9);
-                        z-index: 1000;
-                        overflow-x: auto;
-                        overflow-y: hidden;
-                        box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
-                    }
-                    .floating-scrollbar-content {
-                        height: 1px;
-                    }
                 `;
                 document.head.appendChild(style);
-                
-                // 创建一个固定在底部的滚动条
-                const floatingScrollbar = document.createElement('div');
-                floatingScrollbar.className = 'floating-scrollbar';
-                floatingScrollbar.id = 'floatingScrollbar';
-                
-                // 创建占位内容，宽度与表格相同
-                const scrollContent = document.createElement('div');
-                scrollContent.className = 'floating-scrollbar-content';
-                
-                floatingScrollbar.appendChild(scrollContent);
-                document.body.appendChild(floatingScrollbar);
-                
-                // 同步两个滚动条
-                function syncScrollbars() {
-                    const table = scheduleContainer.querySelector('table');
-                    scrollContent.style.width = table.offsetWidth + 'px';
-                    
-                    // 同步滚动位置
-                    floatingScrollbar.onscroll = function() {
-                        if (scheduleContainer.scrollLeft !== this.scrollLeft) {
-                            scheduleContainer.scrollLeft = this.scrollLeft;
-                        }
-                    };
-                    
-                    scheduleContainer.onscroll = function() {
-                        if (floatingScrollbar.scrollLeft !== this.scrollLeft) {
-                            floatingScrollbar.scrollLeft = this.scrollLeft;
-                        }
-                    };
-                }
-                
-                // 初始同步
-                setTimeout(syncScrollbars, 300);
-                
-                // 窗口大小改变时重新同步
-                window.addEventListener('resize', syncScrollbars);
-                
-                return syncScrollbars;
             }
             
             // 初始调用显示固定滚动条
-            const syncScrollbars = makeScrollbarAlwaysVisible();
+            makeScrollbarAlwaysVisible();
             
             // 监听窗口大小变化，更新容器宽度
             window.addEventListener('resize', function() {
@@ -477,7 +577,7 @@
                     const mainContent = document.querySelector('.main-content');
                     const mainContentWidth = mainContent.offsetWidth;
                     const defaultColCount = 8; // 7天+小时列
-                    const defaultColWidth = Math.floor((mainContentWidth - 120) / defaultColCount); // 增加边距以缩小列宽度
+                    const defaultColWidth = Math.floor((mainContentWidth - 180) / defaultColCount); // 增加边距
                     
                     // 如果内容不长，恢复默认宽度
                     if (!this.value || this.value.length <= 10) {
@@ -556,6 +656,31 @@
                     });
                 });
             });
+        });
+
+        function updateSchedule() {
+            const year = document.getElementById('yearSelect').value;
+            const month = document.getElementById('monthSelect').value;
+            const week = document.getElementById('weekSelect').value;
+            
+            let url = `{{ url_for('update_schedule') }}?year=${year}&month=${month}`;
+            if (week) {
+                url += `&week=${week}`;
+            }
+            
+            window.location.href = url;
+        }
+
+        // 页面加载完成后设置默认值
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const year = urlParams.get('year');
+            const month = urlParams.get('month');
+            const week = urlParams.get('week');
+            
+            if (year) document.getElementById('yearSelect').value = year;
+            if (month) document.getElementById('monthSelect').value = month;
+            if (week) document.getElementById('weekSelect').value = week;
         });
     </script>
 </body>

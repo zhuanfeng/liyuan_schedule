@@ -274,7 +274,7 @@ def update_schedule():
     if request.method == 'POST':
         data = request.get_json()
         date = data.get('date')
-        hour = int(data.get('hour'))  # 将hour转换为整数
+        hour = int(data.get('hour'))
         student_name = data.get('student_name')
         username = session['username']
 
@@ -284,31 +284,36 @@ def update_schedule():
 
         cursor = connection.cursor()
         try:
-            if student_name:  # 如果有学生名字，更新或插入
+            if student_name:
                 query = """
                     INSERT INTO schedule (username, date, hour, student_name)
                     VALUES (%s, %s, %s, %s)
                     ON DUPLICATE KEY UPDATE student_name = %s
                 """
                 cursor.execute(query, (username, date, hour, student_name, student_name))
-            else:  # 如果没有学生名字，删除记录
+            else:
                 query = "DELETE FROM schedule WHERE username = %s AND date = %s AND hour = %s"
                 cursor.execute(query, (username, date, hour))
             
             connection.commit()
             return jsonify({"success": True})
         except Exception as e:
-            print(f"Error saving schedule: {str(e)}")  # 添加错误日志
+            print(f"Error saving schedule: {str(e)}")
             return jsonify({"success": False, "message": str(e)}), 500
         finally:
             cursor.close()
             connection.close()
 
-    # GET 请求的处理保持不变
+    # GET 请求处理
     username = session['username']
     connection = get_db_connection()
     if not connection:
         return render_template('schedule.html', error="Database connection error.")
+
+    # 获取查询参数
+    year = request.args.get('year')
+    month = request.args.get('month')
+    week = request.args.get('week')
 
     # 获取教师基本信息
     cursor = connection.cursor(dictionary=True)
@@ -323,35 +328,115 @@ def update_schedule():
     cursor.close()
     connection.close()
 
-    # 获取周偏移量参数
-    week_param = request.args.get('week', '0')
-    week_offset = int(week_param)
-    
-    # 获取当前周的日期范围
+    # 计算日期范围
     today = datetime.date.today()
-    monday = today - datetime.timedelta(days=today.weekday())
     
-    # 根据偏移量调整周数
-    monday += datetime.timedelta(days=7 * week_offset)
-    
-    dates = [monday + datetime.timedelta(days=i) for i in range(7)]
-
-    # 初始化为嵌套字典：外层键为日期，内层键为小时
-    grouped_schedule = {date: {hour: None for hour in range(8, 24)} for date in dates}
-
-    # 填充数据库中的数据
-    for entry in schedule:
-        date = entry['date']
-        hour = entry['hour']
-        student_name = entry['student_name']
-        if date in grouped_schedule and hour in grouped_schedule[date]:
-            grouped_schedule[date][hour] = {"student_name": student_name}
-
-    return render_template('schedule.html', 
-                         username=username, 
-                         schedule=grouped_schedule, 
-                         current_week=week_offset,
-                         teacher_info=teacher_info)
+    if year and month:
+        year = int(year)
+        month = int(month)
+        # 获取该月第一天
+        first_day = datetime.date(year, month, 1)
+        # 计算该月第一个周一的日期
+        if first_day.weekday() != 0:
+            first_monday = first_day - datetime.timedelta(days=first_day.weekday())
+        else:
+            first_monday = first_day
+            
+        if week:
+            # 如果指定了周，则计算该月该周的日期范围
+            week = int(week)
+            # 计算指定周的周一
+            monday = first_monday + datetime.timedelta(weeks=(week-1))
+            dates = [monday + datetime.timedelta(days=i) for i in range(7)]
+            
+            # 初始化课表数据
+            grouped_schedule = {date: {hour: None for hour in range(8, 24)} for date in dates}
+            
+            # 填充数据库中的数据
+            for entry in schedule:
+                date = entry['date']
+                hour = entry['hour']
+                student_name = entry['student_name']
+                if date in grouped_schedule and hour in grouped_schedule[date]:
+                    grouped_schedule[date][hour] = {"student_name": student_name}
+                    
+            # 计算当前显示的周数（相对于今天）
+            current_week = (monday - (today - datetime.timedelta(days=today.weekday()))).days // 7
+            
+            return render_template('schedule.html', 
+                                username=username, 
+                                schedule=grouped_schedule, 
+                                current_week=current_week,
+                                teacher_info=teacher_info,
+                                selected_year=year,
+                                selected_month=month,
+                                selected_week=week,
+                                all_weeks_schedule={})  # 添加空的all_weeks_schedule
+        else:
+            # 如果没有指定周，显示该月所有周的数据
+            all_weeks_schedule = {}
+            
+            # 计算该月有多少周（最多5周）
+            # 获取该月的最后一天
+            last_day = datetime.date(year, month + 1 if month < 12 else 1, 1) - datetime.timedelta(days=1)
+            # 计算该月实际的周数
+            total_weeks = min(5, (last_day.day + first_monday.weekday() - 1) // 7 + 1)
+            
+            # 初始化所有周的数据（只包括实际存在的周）
+            for week_num in range(1, total_weeks + 1):
+                week_monday = first_monday + datetime.timedelta(weeks=(week_num-1))
+                week_dates = [week_monday + datetime.timedelta(days=i) for i in range(7)]
+                
+                # 初始化该周的课表数据
+                week_schedule = {date: {hour: None for hour in range(8, 24)} for date in week_dates}
+                
+                # 填充数据库中的数据
+                for entry in schedule:
+                    date = entry['date']
+                    hour = entry['hour']
+                    student_name = entry['student_name']
+                    if date in week_schedule and hour in week_schedule[date]:
+                        week_schedule[date][hour] = {"student_name": student_name}
+                
+                all_weeks_schedule[week_num] = week_schedule
+            
+            return render_template('schedule.html', 
+                                username=username, 
+                                schedule={},  # 空的schedule，因为我们使用all_weeks_schedule
+                                all_weeks_schedule=all_weeks_schedule,
+                                current_week=0,
+                                teacher_info=teacher_info,
+                                selected_year=year,
+                                selected_month=month,
+                                selected_week=None,
+                                total_weeks=total_weeks)  # 添加实际周数
+    else:
+        # 如果没有指定年月，使用当前日期
+        monday = today - datetime.timedelta(days=today.weekday())
+        dates = [monday + datetime.timedelta(days=i) for i in range(7)]
+        
+        # 初始化课表数据
+        grouped_schedule = {date: {hour: None for hour in range(8, 24)} for date in dates}
+        
+        # 填充数据库中的数据
+        for entry in schedule:
+            date = entry['date']
+            hour = entry['hour']
+            student_name = entry['student_name']
+            if date in grouped_schedule and hour in grouped_schedule[date]:
+                grouped_schedule[date][hour] = {"student_name": student_name}
+        
+        current_week = 0
+        
+        return render_template('schedule.html', 
+                            username=username, 
+                            schedule=grouped_schedule, 
+                            current_week=current_week,
+                            teacher_info=teacher_info,
+                            selected_year=today.year,
+                            selected_month=today.month,
+                            selected_week=None,
+                            all_weeks_schedule={})  # 添加空的all_weeks_schedule
 
 @app.route('/logout')
 def logout():
