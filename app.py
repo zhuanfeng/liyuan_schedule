@@ -274,7 +274,7 @@ def update_schedule():
     if request.method == 'POST':
         data = request.get_json()
         date = data.get('date')
-        hour = data.get('hour')
+        hour = int(data.get('hour'))  # 将hour转换为整数
         student_name = data.get('student_name')
         username = session['username']
 
@@ -298,6 +298,7 @@ def update_schedule():
             connection.commit()
             return jsonify({"success": True})
         except Exception as e:
+            print(f"Error saving schedule: {str(e)}")  # 添加错误日志
             return jsonify({"success": False, "message": str(e)}), 500
         finally:
             cursor.close()

@@ -11,7 +11,7 @@
     <div class="sidebar">
         <ul class="sidebar-menu">
             <li><a href="{{ url_for('profile') }}" class="active">个人信息</a></li>
-            <li><a href="{{ url_for('get_schedule') }}">查看课表</a></li>
+            <li><a href="{{ url_for('update_schedule') }}">查看课表</a></li>
             <li><a href="{{ url_for('change_password') }}">修改密码</a></li>
         </ul>
     </div>
@@ -139,6 +139,49 @@
             background-color: #f8d7da;
             color: #721c24;
             border: 1px solid #f5c6cb;
+        }
+        .sidebar {
+            width: 160px;
+            background-color: #f8f9fa;
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            padding: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .sidebar-menu {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .sidebar-menu li {
+            margin-bottom: 8px;
+        }
+        .sidebar-menu a {
+            display: block;
+            padding: 8px 12px;
+            color: #333;
+            text-decoration: none;
+            font-size: 14px;
+            transition: background-color 0.3s;
+            border-left: 3px solid transparent;
+        }
+        .sidebar-menu a:hover {
+            background-color: #e9ecef;
+            border-left-color: #4169E1;
+        }
+        .sidebar-menu a.active {
+            background-color: #e9ecef;
+            border-left-color: #4169E1;
+            color: #4169E1;
+        }
+        .main-content {
+            margin-left: 160px;
+            padding: 20px;
+            overflow: hidden;
+            width: calc(100% - 180px);
+            min-height: 100vh;
         }
     </style>
 

@@ -10,15 +10,15 @@ body {
 
 /* 左侧菜单样式 */
 .sidebar {
-    width: 200px;
+    width: 120px;  /* 进一步减小宽度 */
     background-color: #f8f9fa;
+    padding: 10px 0;  /* 减小内边距 */
     position: fixed;
     left: 0;
     top: 0;
     bottom: 0;
-    padding: 20px;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
-    z-index: 100;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    z-index: 1000;
 }
 
 .sidebar-menu {
@@ -28,35 +28,37 @@ body {
 }
 
 .sidebar-menu li {
-    margin-bottom: 10px;
+    margin-bottom: 3px;  /* 进一步减小间距 */
 }
 
 .sidebar-menu a {
     display: block;
-    padding: 12px 15px;
+    padding: 5px 10px;  /* 进一步减小内边距 */
     color: #333;
     text-decoration: none;
-    border-radius: 4px;
+    font-size: 12px;  /* 减小字体大小 */
     transition: all 0.3s ease;
-    font-size: 14px;
+    border-left: 3px solid transparent;
 }
 
 .sidebar-menu a:hover {
     background-color: #e9ecef;
-    color: #4169E1;
+    border-left-color: #4169E1;
 }
 
 .sidebar-menu a.active {
-    background-color: #4169E1;
-    color: white;
+    background-color: #e9ecef;
+    border-left-color: #4169E1;
+    color: #4169E1;
 }
 
 /* 主内容区域 */
 .main-content {
-    margin-left: 220px;
+    margin-left: 120px;  /* 相应调整主内容区域的左边距 */
     padding: 20px;
-    flex: 1;
-    width: calc(100% - 220px);
+    min-height: 100vh;
+    background-color: #f8f9fa;
+    width: calc(100% - 120px);  /* 确保主内容区域宽度正确 */
 }
 
 /* 头像按钮样式 */
