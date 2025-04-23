@@ -57,11 +57,27 @@
                 </tbody>
             </table>
             <div class="week-navigation">
-                <button class="nav-btn" onclick="window.location.href='?week={{ current_week - 1 }}&username={{ username }}'">上一周</button>
-                <button class="nav-btn" onclick="window.location.href='?week={{ current_week + 1 }}&username={{ username }}'">下一周</button>
+                <button class="nav-btn" onclick="navigateWeek(-1)">上一周</button>
+                <button class="nav-btn" onclick="navigateWeek(1)">下一周</button>
             </div>
         </div>
     </div>
+
+    <script>
+        function navigateWeek(offset) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const currentOffset = parseInt(urlParams.get('week_offset') || 0);
+            const newOffset = currentOffset + offset;
+            
+            // 保留username参数
+            const username = urlParams.get('username');
+            
+            let url = `?week_offset=${newOffset}`;
+            if (username) url += `&username=${username}`;
+            
+            window.location.href = url;
+        }
+    </script>
 
     <style>
         .teacher-info {
