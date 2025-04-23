@@ -235,36 +235,132 @@ def schedule_for_admin():
     cursor.close()
     connection.close()
 
-    # 获取周偏移量参数
+    # 获取查询参数
+    year = request.args.get('year')
+    month = request.args.get('month')
+    week = request.args.get('week')
     week_offset = request.args.get('week_offset', '0')
     current_week_offset = int(week_offset)
     
-    # 获取当前周的日期范围
+    # 计算日期范围
     today = datetime.date.today()
-    monday = today - datetime.timedelta(days=today.weekday())
     
-    # 根据参数调整周数
-    if current_week_offset != 0:
-        monday = monday + datetime.timedelta(days=7 * current_week_offset)
+    if year and month:
+        year = int(year)
+        month = int(month)
+        # 获取该月第一天
+        first_day = datetime.date(year, month, 1)
+        # 计算该月第一个周一的日期
+        if first_day.weekday() != 0:
+            first_monday = first_day - datetime.timedelta(days=first_day.weekday())
+        else:
+            first_monday = first_day
+            
+        if week:
+            # 如果指定了周，则计算该月该周的日期范围
+            week = int(week)
+            # 计算指定周的周一
+            monday = first_monday + datetime.timedelta(weeks=(week-1))
+            
+            # 应用周偏移量，使上一周/下一周功能正常工作
+            if week_offset:
+                offset = int(week_offset)
+                # 只有在非零偏移时才应用
+                if offset != 0:
+                    monday = monday + datetime.timedelta(weeks=offset)
+                
+            dates = [monday + datetime.timedelta(days=i) for i in range(7)]
+            
+            # 初始化课表数据
+            grouped_schedule = {date: {hour: None for hour in range(8, 24)} for date in dates}
+            
+            # 填充数据库中的数据
+            for entry in schedule:
+                date = entry['date']
+                hour = entry['hour']
+                student_name = entry['student_name']
+                if date in grouped_schedule and hour in grouped_schedule[date]:
+                    grouped_schedule[date][hour] = {"student_name": student_name}
+                    
+            # 计算当前显示的周数（相对于今天）
+            current_week = (monday - (today - datetime.timedelta(days=today.weekday()))).days // 7
+            
+            return render_template('schedule_for_admin.html', 
+                                 username=target_username, 
+                                 schedule=grouped_schedule, 
+                                 current_week=current_week,
+                                 teacher_info=teacher_info,
+                                 selected_year=year,
+                                 selected_month=month,
+                                 selected_week=week,
+                                 week_offset=int(week_offset),
+                                 all_weeks_schedule={})  # 添加空的all_weeks_schedule
+        else:
+            # 如果没有指定周，显示该月所有周的数据
+            all_weeks_schedule = {}
+            
+            # 计算该月有多少周（最多5周）
+            # 获取该月的最后一天
+            last_day = datetime.date(year, month + 1 if month < 12 else 1, 1) - datetime.timedelta(days=1)
+            # 计算该月实际的周数
+            total_weeks = min(5, (last_day.day + first_monday.weekday() - 1) // 7 + 1)
+            
+            # 初始化所有周的数据（只包括实际存在的周）
+            for week_num in range(1, total_weeks + 1):
+                week_monday = first_monday + datetime.timedelta(weeks=(week_num-1))
+                week_dates = [week_monday + datetime.timedelta(days=i) for i in range(7)]
+                
+                # 初始化该周的课表数据
+                week_schedule = {date: {hour: None for hour in range(8, 24)} for date in week_dates}
+                
+                # 填充数据库中的数据
+                for entry in schedule:
+                    date = entry['date']
+                    hour = entry['hour']
+                    student_name = entry['student_name']
+                    if date in week_schedule and hour in week_schedule[date]:
+                        week_schedule[date][hour] = {"student_name": student_name}
+                
+                all_weeks_schedule[week_num] = week_schedule
+            
+            return render_template('schedule_for_admin.html', 
+                                 username=target_username, 
+                                 schedule={},  # 空的schedule，因为我们使用all_weeks_schedule
+                                 all_weeks_schedule=all_weeks_schedule,
+                                 current_week=0,
+                                 teacher_info=teacher_info,
+                                 selected_year=year,
+                                 selected_month=month,
+                                 selected_week=None,
+                                 week_offset=0,
+                                 total_weeks=total_weeks)
+    else:
+        # 如果没有指定年月，使用当前日期
+        # 应用周偏移量
+        monday = today - datetime.timedelta(days=today.weekday()) + datetime.timedelta(weeks=current_week_offset)
+        dates = [monday + datetime.timedelta(days=i) for i in range(7)]
+        
+        # 初始化课表数据
+        grouped_schedule = {date: {hour: None for hour in range(8, 24)} for date in dates}
+        
+        # 填充数据库中的数据
+        for entry in schedule:
+            date = entry['date']
+            hour = entry['hour']
+            student_name = entry['student_name']
+            if date in grouped_schedule and hour in grouped_schedule[date]:
+                grouped_schedule[date][hour] = {"student_name": student_name}
     
-    dates = [monday + datetime.timedelta(days=i) for i in range(7)]
-
-    # 初始化为嵌套字典：外层键为日期，内层键为小时
-    grouped_schedule = {date: {hour: None for hour in range(8, 24)} for date in dates}
-
-    # 填充数据库中的数据
-    for entry in schedule:
-        date = entry['date']
-        hour = entry['hour']
-        student_name = entry['student_name']
-        if date in grouped_schedule and hour in grouped_schedule[date]:
-            grouped_schedule[date][hour] = {"student_name": student_name}
-
-    return render_template('schedule_for_admin.html', 
-                         username=target_username, 
-                         schedule=grouped_schedule, 
-                         current_week=current_week_offset,
-                         teacher_info=teacher_info)
+        return render_template('schedule_for_admin.html', 
+                             username=target_username, 
+                             schedule=grouped_schedule, 
+                             current_week=current_week_offset,
+                             teacher_info=teacher_info,
+                             selected_year=today.year,
+                             selected_month=today.month,
+                             selected_week=None,
+                             week_offset=current_week_offset,
+                             all_weeks_schedule={})
 
 @app.route('/schedule', methods=['GET', 'POST'])
 def update_schedule():
