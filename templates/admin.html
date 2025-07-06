@@ -28,6 +28,7 @@
 
             <section class="content">
                 <h2 class="section-title">管理员列表</h2>
+                <a href="{{ url_for('campus_schedule') }}" class="btn btn-warning mb-3" style="font-weight:bold;">校区课程表</a>
 
                 <!-- 添加教师表单 -->
                 <form action="{{ url_for('add_teacher') }}" method="post" class="search-bar">
