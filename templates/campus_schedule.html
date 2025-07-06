@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        body {
+            background: #f8dbe2;
+            font-family: '微软雅黑', Arial, sans-serif;
+        }
+        .main-title {
+            text-align: center;
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #ff6f91;
+            margin-top: 30px;
+            letter-spacing: 2px;
+        }
+        .date-range {
+            text-align: center;
+            font-size: 1.3rem;
+            color: #ff6f91;
+            margin-bottom: 20px;
+        }
+        .schedule-table {
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-collapse: separate;
+            border-spacing: 0;
+            overflow-x: auto;
+            width: 98vw;
+            min-width: 1200px;
+        }
+        .schedule-table th, .schedule-table td {
+            border: 1px solid #e0e0e0;
+            text-align: center;
+            padding: 8px 6px;
+            min-width: 70px;
+            font-size: 1rem;
+        }
+        .schedule-table th {
+            background: #ffe3ec;
+            color: #ff6f91;
+            font-weight: bold;
+        }
+        .schedule-table td {
+            background: #fff;
+        }
+        .schedule-table .subject-chemistry {
+            background: #ffd6af !important;
+            color: #333;
+            font-weight: bold;
+        }
+        .schedule-table .subject-math {
+            background: #c7d8f4 !important;
+            color: #333;
+            font-weight: bold;
+        }
+        .schedule-table .subject-physics {
+            background: #ffb3b3 !important;
+            color: #333;
+            font-weight: bold;
+        }
+        .rest-cell {
+            background: #f8f8f8;
+            color: #888;
+            font-size: 1.1rem;
+        }
+        .time-label {
+            background: #ffe3ec;
+            color: #ff6f91;
+            font-weight: bold;
+            min-width: 90px;
+        }
+        @media (max-width: 1200px) {
+            .schedule-table {
+                min-width: 900px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-title">{{ title }}</div>
+    <div class="date-range">{{ date_range }}</div>
+    <div style="overflow-x:auto;">
+        {% set subject_map = {'化学': 'chemistry', '数学': 'math', '物理': 'physics'} %}
+        <table class="schedule-table">
+            <thead>
+                <tr>
+                    <th class="time-label">时间/日期</th>
+                    {% for day in days %}
+                    <th>{{ day }}</th>
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for row_idx in range(time_slots|length) %}
+                <tr>
+                    <th class="time-label">
+                        {{ time_slots[row_idx] }}
+                        {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
+                    </th>
+                    {% for col_idx in range(days|length) %}
+                        {% set subject = schedule[row_idx][col_idx] %}
+                        {% if subject %}
+                            <td class="subject-{{ subject_map[subject] }}">{{ subject }}</td>
+                        {% else %}
+                            <td></td>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html> 
