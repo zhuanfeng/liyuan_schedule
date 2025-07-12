@@ -8,6 +8,7 @@
         body {
             background: #f8dbe2;
             font-family: '微软雅黑', Arial, sans-serif;
+            min-width: 1200px;
         }
         .main-title {
             text-align: center;
@@ -30,7 +31,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
             border-collapse: separate;
             border-spacing: 0;
-            overflow-x: auto;
             width: 98vw;
             min-width: 1200px;
         }
@@ -121,104 +121,98 @@
     <!-- 文德福课程表 -->
     <div style="margin-bottom: 40px;">
         <h2 style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">文德福</h2>
-        <div style="overflow-x:auto;">
-            {% set subject_map = {'化学': 'chemistry', '数学': 'math', '物理': 'physics', '语文': 'chinese', '英语': 'english', '政治': 'politics', '历史': 'history', '地理': 'geography'} %}
-            <table class="schedule-table" id="wendefu-table">
-                <thead>
-                    <tr>
-                        <th class="time-label">时间/日期</th>
-                        <!-- 其余日期th由JS动态生成 -->
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row_idx in range(time_slots|length) %}
-                    <tr>
-                        <th class="time-label">
-                            {{ time_slots[row_idx] }}
-                            {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
-                        </th>
-                        {% for col_idx in range(days|length) %}
-                            <td onclick="editCell(this, 'wendefu')"
-                                data-row="{{ row_idx }}"
-                                data-col="{{ col_idx }}"
-                                data-day="{{ days[col_idx] }}"
-                                data-time="{{ time_slots[row_idx] }}"
-                                data-campus="wendefu"
-                                style="cursor: pointer;"></td>
-                        {% endfor %}
-                    </tr>
+        {% set subject_map = {'化学': 'chemistry', '数学': 'math', '物理': 'physics', '语文': 'chinese', '英语': 'english', '政治': 'politics', '历史': 'history', '地理': 'geography'} %}
+        <table class="schedule-table" id="wendefu-table">
+            <thead>
+                <tr>
+                    <th class="time-label">时间/日期</th>
+                    <!-- 其余日期th由JS动态生成 -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for row_idx in range(time_slots|length) %}
+                <tr>
+                    <th class="time-label">
+                        {{ time_slots[row_idx] }}
+                        {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
+                    </th>
+                    {% for col_idx in range(days|length) %}
+                        <td onclick="editCell(this, 'wendefu')"
+                            data-row="{{ row_idx }}"
+                            data-col="{{ col_idx }}"
+                            data-day="{{ days[col_idx] }}"
+                            data-time="{{ time_slots[row_idx] }}"
+                            data-campus="wendefu"
+                            style="cursor: pointer;"></td>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
     <!-- 翠海课程表 -->
     <div style="margin-bottom: 40px;">
         <h2 style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">翠海</h2>
-        <div style="overflow-x:auto;">
-            <table class="schedule-table" id="cuihai-table">
-                <thead>
-                    <tr>
-                        <th class="time-label">时间/日期</th>
-                        <!-- 其余日期th由JS动态生成 -->
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row_idx in range(time_slots|length) %}
-                    <tr>
-                        <th class="time-label">
-                            {{ time_slots[row_idx] }}
-                            {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
-                        </th>
-                        {% for col_idx in range(days|length) %}
-                            <td onclick="editCell(this, 'cuihai')"
-                                data-row="{{ row_idx }}"
-                                data-col="{{ col_idx }}"
-                                data-day="{{ days[col_idx] }}"
-                                data-time="{{ time_slots[row_idx] }}"
-                                data-campus="cuihai"
-                                style="cursor: pointer;"></td>
-                        {% endfor %}
-                    </tr>
+        <table class="schedule-table" id="cuihai-table">
+            <thead>
+                <tr>
+                    <th class="time-label">时间/日期</th>
+                    <!-- 其余日期th由JS动态生成 -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for row_idx in range(time_slots|length) %}
+                <tr>
+                    <th class="time-label">
+                        {{ time_slots[row_idx] }}
+                        {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
+                    </th>
+                    {% for col_idx in range(days|length) %}
+                        <td onclick="editCell(this, 'cuihai')"
+                            data-row="{{ row_idx }}"
+                            data-col="{{ col_idx }}"
+                            data-day="{{ days[col_idx] }}"
+                            data-time="{{ time_slots[row_idx] }}"
+                            data-campus="cuihai"
+                            style="cursor: pointer;"></td>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
     <!-- 玮鹏课程表 -->
     <div style="margin-bottom: 40px;">
         <h2 style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">玮鹏</h2>
-        <div style="overflow-x:auto;">
-            <table class="schedule-table" id="weipeng-table">
-                <thead>
-                    <tr>
-                        <th class="time-label">时间/日期</th>
-                        <!-- 其余日期th由JS动态生成 -->
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for row_idx in range(time_slots|length) %}
-                    <tr>
-                        <th class="time-label">
-                            {{ time_slots[row_idx] }}
-                            {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
-                        </th>
-                        {% for col_idx in range(days|length) %}
-                            <td onclick="editCell(this, 'weipeng')"
-                                data-row="{{ row_idx }}"
-                                data-col="{{ col_idx }}"
-                                data-day="{{ days[col_idx] }}"
-                                data-time="{{ time_slots[row_idx] }}"
-                                data-campus="weipeng"
-                                style="cursor: pointer;"></td>
-                        {% endfor %}
-                    </tr>
+        <table class="schedule-table" id="weipeng-table">
+            <thead>
+                <tr>
+                    <th class="time-label">时间/日期</th>
+                    <!-- 其余日期th由JS动态生成 -->
+                </tr>
+            </thead>
+            <tbody>
+                {% for row_idx in range(time_slots|length) %}
+                <tr>
+                    <th class="time-label">
+                        {{ time_slots[row_idx] }}
+                        {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
+                    </th>
+                    {% for col_idx in range(days|length) %}
+                        <td onclick="editCell(this, 'weipeng')"
+                            data-row="{{ row_idx }}"
+                            data-col="{{ col_idx }}"
+                            data-day="{{ days[col_idx] }}"
+                            data-time="{{ time_slots[row_idx] }}"
+                            data-campus="weipeng"
+                            style="cursor: pointer;"></td>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 
     <script>
