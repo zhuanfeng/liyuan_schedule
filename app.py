@@ -737,36 +737,53 @@ def campus_schedule():
     
     # 基础数据
     title = "暑假崇达数理化课程表"
-    date_range = "2025.7.13-7.31"
-    days = [
-        "7/13 星期日", "7/14 星期一", "7/15 星期二", "7/16 星期三", "7/17 星期四", "7/18 星期五", "7/19 星期六",
-        "7/20 星期日", "7/21 星期一", "7/22 星期二", "7/23 星期三", "7/24 星期四", "7/25 星期五", "7/26 星期六",
-        "7/27 星期日", "7/28 星期一", "7/29 星期二", "7/30 星期三", "7/31 星期四"
-    ]
+    
+    # 根据月份动态生成日期范围
+    try:
+        year, month_num = month.split('-')
+        year = int(year)
+        month_num = int(month_num)
+        
+        # 获取该月的第一天和最后一天
+        first_day = datetime.date(year, month_num, 1)
+        if month_num == 12:
+            last_day = datetime.date(year + 1, 1, 1) - datetime.timedelta(days=1)
+        else:
+            last_day = datetime.date(year, month_num + 1, 1) - datetime.timedelta(days=1)
+        
+        # 生成该月的所有日期
+        days = []
+        current_date = first_day
+        while current_date <= last_day:
+            weekday_names = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']
+            weekday = weekday_names[current_date.weekday()]
+            days.append(f"{current_date.month}/{current_date.day} {weekday}")
+            current_date += datetime.timedelta(days=1)
+        
+        date_range = f"{year}.{month_num}.{first_day.day}-{last_day.day}"
+        
+    except Exception as e:
+        # 如果解析失败，使用默认值
+        print(f"日期解析错误: {e}")
+        date_range = "2025.7.13-7.31"
+        days = [
+            "7/13 星期日", "7/14 星期一", "7/15 星期二", "7/16 星期三", "7/17 星期四", "7/18 星期五", "7/19 星期六",
+            "7/20 星期日", "7/21 星期一", "7/22 星期二", "7/23 星期三", "7/24 星期四", "7/25 星期五", "7/26 星期六",
+            "7/27 星期日", "7/28 星期一", "7/29 星期二", "7/30 星期三", "7/31 星期四"
+        ]
     time_slots = [
         "8:00-9:00", "9:00-10:00", "10:00-11:00", "11:00-12:00",
         "14:00-15:00", "15:00-16:00", "16:00-17:00", "17:00-18:00",
         "19:00-20:00", "20:00-21:00"
     ]
     
-    # 从数据库读取课程数据（文德福校区作为默认显示）
+    # 不再从数据库读取数据，因为现在通过AJAX动态加载
     cursor = connection.cursor(dictionary=True)
-    query = "SELECT day_index, time_slot_index, subject FROM campus_schedule WHERE month = %s AND campus = 'wendefu'"
-    cursor.execute(query, (month,))
-    db_schedule = cursor.fetchall()
     cursor.close()
     connection.close()
     
     # 初始化空的课程表
     schedule = [["" for _ in range(len(days))] for _ in range(len(time_slots))]
-    
-    # 填充从数据库读取的数据
-    for entry in db_schedule:
-        day_idx = entry['day_index']
-        time_idx = entry['time_slot_index']
-        subject = entry['subject']
-        if 0 <= time_idx < len(time_slots) and 0 <= day_idx < len(days):
-            schedule[time_idx][day_idx] = subject
     
     return render_template('campus_schedule.html', 
                          title=title, 
@@ -790,12 +807,36 @@ def campus_schedule_data():
     if not connection:
         return jsonify({"success": False, "message": "数据库连接错误"}), 500
     
-    # 基础数据
-    days = [
-        "7/13 星期日", "7/14 星期一", "7/15 星期二", "7/16 星期三", "7/17 星期四", "7/18 星期五", "7/19 星期六",
-        "7/20 星期日", "7/21 星期一", "7/22 星期二", "7/23 星期三", "7/24 星期四", "7/25 星期五", "7/26 星期六",
-        "7/27 星期日", "7/28 星期一", "7/29 星期二", "7/30 星期三", "7/31 星期四"
-    ]
+    # 基础数据 - 根据月份动态生成日期
+    try:
+        year, month_num = month.split('-')
+        year = int(year)
+        month_num = int(month_num)
+        
+        # 获取该月的第一天和最后一天
+        first_day = datetime.date(year, month_num, 1)
+        if month_num == 12:
+            last_day = datetime.date(year + 1, 1, 1) - datetime.timedelta(days=1)
+        else:
+            last_day = datetime.date(year, month_num + 1, 1) - datetime.timedelta(days=1)
+        
+        # 生成该月的所有日期
+        days = []
+        current_date = first_day
+        while current_date <= last_day:
+            weekday_names = ['星期一', '星期二', '星期三', '星期四', '星期五', '星期六', '星期日']
+            weekday = weekday_names[current_date.weekday()]
+            days.append(f"{current_date.month}/{current_date.day} {weekday}")
+            current_date += datetime.timedelta(days=1)
+        
+    except Exception as e:
+        # 如果解析失败，使用默认值
+        print(f"日期解析错误: {e}")
+        days = [
+            "7/13 星期日", "7/14 星期一", "7/15 星期二", "7/16 星期三", "7/17 星期四", "7/18 星期五", "7/19 星期六",
+            "7/20 星期日", "7/21 星期一", "7/22 星期二", "7/23 星期三", "7/24 星期四", "7/25 星期五", "7/26 星期六",
+            "7/27 星期日", "7/28 星期一", "7/29 星期二", "7/30 星期三", "7/31 星期四"
+        ]
     time_slots = [
         "8:00-9:00", "9:00-10:00", "10:00-11:00", "11:00-12:00",
         "14:00-15:00", "15:00-16:00", "16:00-17:00", "17:00-18:00",
@@ -825,7 +866,8 @@ def campus_schedule_data():
         "success": True,
         "schedule": schedule,
         "campus": campus,
-        "month": month
+        "month": month,
+        "days": days
     })
 
 if __name__ == '__main__':

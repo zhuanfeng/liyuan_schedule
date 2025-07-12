@@ -123,13 +123,11 @@
         <h2 style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">文德福</h2>
         <div style="overflow-x:auto;">
             {% set subject_map = {'化学': 'chemistry', '数学': 'math', '物理': 'physics', '语文': 'chinese', '英语': 'english', '政治': 'politics', '历史': 'history', '地理': 'geography'} %}
-            <table class="schedule-table">
+            <table class="schedule-table" id="wendefu-table">
                 <thead>
                     <tr>
                         <th class="time-label">时间/日期</th>
-                        {% for day in days %}
-                        <th>{{ day }}</th>
-                        {% endfor %}
+                        <!-- 其余日期th由JS动态生成 -->
                     </tr>
                 </thead>
                 <tbody>
@@ -140,25 +138,13 @@
                             {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
                         </th>
                         {% for col_idx in range(days|length) %}
-                            {% set subject = schedule[row_idx][col_idx] %}
-                            {% if subject %}
-                                <td class="subject-{{ subject_map[subject] }}" 
-                                    onclick="editCell(this, 'wendefu')"
-                                    data-row="{{ row_idx }}"
-                                    data-col="{{ col_idx }}"
-                                    data-day="{{ days[col_idx] }}"
-                                    data-time="{{ time_slots[row_idx] }}"
-                                    data-campus="wendefu"
-                                    style="cursor: pointer;">{{ subject }}</td>
-                            {% else %}
-                                <td onclick="editCell(this, 'wendefu')"
-                                    data-row="{{ row_idx }}"
-                                    data-col="{{ col_idx }}"
-                                    data-day="{{ days[col_idx] }}"
-                                    data-time="{{ time_slots[row_idx] }}"
-                                    data-campus="wendefu"
-                                    style="cursor: pointer;"></td>
-                            {% endif %}
+                            <td onclick="editCell(this, 'wendefu')"
+                                data-row="{{ row_idx }}"
+                                data-col="{{ col_idx }}"
+                                data-day="{{ days[col_idx] }}"
+                                data-time="{{ time_slots[row_idx] }}"
+                                data-campus="wendefu"
+                                style="cursor: pointer;"></td>
                         {% endfor %}
                     </tr>
                     {% endfor %}
@@ -175,9 +161,7 @@
                 <thead>
                     <tr>
                         <th class="time-label">时间/日期</th>
-                        {% for day in days %}
-                        <th>{{ day }}</th>
-                        {% endfor %}
+                        <!-- 其余日期th由JS动态生成 -->
                     </tr>
                 </thead>
                 <tbody>
@@ -211,9 +195,7 @@
                 <thead>
                     <tr>
                         <th class="time-label">时间/日期</th>
-                        {% for day in days %}
-                        <th>{{ day }}</th>
-                        {% endfor %}
+                        <!-- 其余日期th由JS动态生成 -->
                     </tr>
                 </thead>
                 <tbody>
@@ -261,17 +243,33 @@
             if(m == parseInt(curMonth)) opt.selected = true;
             monthSelect.appendChild(opt);
         }
-        // 切换时刷新页面
+        // 切换时动态更新页面
         yearSelect.onchange = monthSelect.onchange = function() {
             const y = yearSelect.value;
             const m = monthSelect.value;
-            window.location.href = '?month=' + y + '-' + m;
+            
+            // 更新URL但不刷新页面
+            const newUrl = '?month=' + y + '-' + m;
+            window.history.pushState({}, '', newUrl);
+            
+            // 更新日期范围显示
+            updateDateRange();
+            
+            // 重新加载所有校区的数据
+            loadCampusData('wendefu');
+            loadCampusData('cuihai');
+            loadCampusData('weipeng');
         };
 
         // 页面加载时加载所有校区的数据
         document.addEventListener('DOMContentLoaded', function() {
-            loadCampusData('cuihai');
-            loadCampusData('weipeng');
+            // 延迟加载，确保页面完全加载后再加载数据
+            setTimeout(function() {
+                loadCampusData('wendefu');
+                loadCampusData('cuihai');
+                loadCampusData('weipeng');
+                updateDateRange();
+            }, 100);
         });
 
         // 加载指定校区的数据
@@ -281,6 +279,7 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
+                        updateTableHeader(campus, data.days);
                         updateCampusTable(campus, data.schedule);
                     }
                 })
@@ -299,43 +298,63 @@
             
             for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
                 const cells = rows[rowIdx].querySelectorAll('td');
-                for (let colIdx = 0; colIdx < cells.length; colIdx++) {
+                for (let colIdx = 0; colIdx < scheduleData[0].length; colIdx++) {
                     const cell = cells[colIdx];
                     const subject = scheduleData[rowIdx] && scheduleData[rowIdx][colIdx];
-                    
                     // 清除原有的class
                     cell.className = cell.className.replace(/subject-\w+/g, '');
-                    
                     if (subject) {
-                        // 根据科目添加对应的class
                         let subjectClass = '';
-                        if (subject === '化学') {
-                            subjectClass = 'subject-chemistry';
-                        } else if (subject === '数学') {
-                            subjectClass = 'subject-math';
-                        } else if (subject === '物理') {
-                            subjectClass = 'subject-physics';
-                        } else if (subject === '语文') {
-                            subjectClass = 'subject-chinese';
-                        } else if (subject === '英语') {
-                            subjectClass = 'subject-english';
-                        } else if (subject === '政治') {
-                            subjectClass = 'subject-politics';
-                        } else if (subject === '历史') {
-                            subjectClass = 'subject-history';
-                        } else if (subject === '地理') {
-                            subjectClass = 'subject-geography';
-                        }
-                        
-                        if (subjectClass) {
-                            cell.classList.add(subjectClass);
-                        }
+                        if (subject === '化学') subjectClass = 'subject-chemistry';
+                        else if (subject === '数学') subjectClass = 'subject-math';
+                        else if (subject === '物理') subjectClass = 'subject-physics';
+                        else if (subject === '语文') subjectClass = 'subject-chinese';
+                        else if (subject === '英语') subjectClass = 'subject-english';
+                        else if (subject === '政治') subjectClass = 'subject-politics';
+                        else if (subject === '历史') subjectClass = 'subject-history';
+                        else if (subject === '地理') subjectClass = 'subject-geography';
+                        if (subjectClass) cell.classList.add(subjectClass);
                         cell.textContent = subject;
                     } else {
                         cell.textContent = '';
                     }
                 }
             }
+        }
+
+        // 动态更新表头
+        function updateTableHeader(campus, days) {
+            const table = document.getElementById(campus + '-table');
+            if (!table) return;
+            const thead = table.querySelector('thead');
+            if (!thead) return;
+            const headerRow = thead.querySelector('tr');
+            // 保留第一个th（时间/日期），其余全部移除
+            while (headerRow.children.length > 1) {
+                headerRow.removeChild(headerRow.lastChild);
+            }
+            // 添加新的日期th
+            days.forEach(day => {
+                const th = document.createElement('th');
+                th.textContent = day;
+                headerRow.appendChild(th);
+            });
+        }
+
+        // 更新日期范围显示
+        function updateDateRange() {
+            const y = yearSelect.value;
+            const m = monthSelect.value;
+            const dateRangeElement = document.querySelector('.date-range');
+            if (dateRangeElement) {
+                dateRangeElement.textContent = `${y}.${m}.1-${getLastDayOfMonth(y, m)}`;
+            }
+        }
+
+        // 获取指定年月的最后一天
+        function getLastDayOfMonth(year, month) {
+            const lastDay = new Date(year, month, 0);
+            return lastDay.getDate();
         }
 
         // ========== 编辑单元格时带上month和campus ==========
