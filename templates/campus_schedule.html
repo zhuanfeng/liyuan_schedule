@@ -117,47 +117,126 @@
             <select id="monthSelect" name="month"></select>
         </form>
     </div>
-    <div style="overflow-x:auto;">
-        {% set subject_map = {'化学': 'chemistry', '数学': 'math', '物理': 'physics', '语文': 'chinese', '英语': 'english', '政治': 'politics', '历史': 'history', '地理': 'geography'} %}
-        <table class="schedule-table">
-            <thead>
-                <tr>
-                    <th class="time-label">时间/日期</th>
-                    {% for day in days %}
-                    <th>{{ day }}</th>
+
+    <!-- 文德福课程表 -->
+    <div style="margin-bottom: 40px;">
+        <h2 style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">文德福</h2>
+        <div style="overflow-x:auto;">
+            {% set subject_map = {'化学': 'chemistry', '数学': 'math', '物理': 'physics', '语文': 'chinese', '英语': 'english', '政治': 'politics', '历史': 'history', '地理': 'geography'} %}
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th class="time-label">时间/日期</th>
+                        {% for day in days %}
+                        <th>{{ day }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row_idx in range(time_slots|length) %}
+                    <tr>
+                        <th class="time-label">
+                            {{ time_slots[row_idx] }}
+                            {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
+                        </th>
+                        {% for col_idx in range(days|length) %}
+                            {% set subject = schedule[row_idx][col_idx] %}
+                            {% if subject %}
+                                <td class="subject-{{ subject_map[subject] }}" 
+                                    onclick="editCell(this, 'wendefu')"
+                                    data-row="{{ row_idx }}"
+                                    data-col="{{ col_idx }}"
+                                    data-day="{{ days[col_idx] }}"
+                                    data-time="{{ time_slots[row_idx] }}"
+                                    data-campus="wendefu"
+                                    style="cursor: pointer;">{{ subject }}</td>
+                            {% else %}
+                                <td onclick="editCell(this, 'wendefu')"
+                                    data-row="{{ row_idx }}"
+                                    data-col="{{ col_idx }}"
+                                    data-day="{{ days[col_idx] }}"
+                                    data-time="{{ time_slots[row_idx] }}"
+                                    data-campus="wendefu"
+                                    style="cursor: pointer;"></td>
+                            {% endif %}
+                        {% endfor %}
+                    </tr>
                     {% endfor %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for row_idx in range(time_slots|length) %}
-                <tr>
-                    <th class="time-label">
-                        {{ time_slots[row_idx] }}
-                        {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
-                    </th>
-                    {% for col_idx in range(days|length) %}
-                        {% set subject = schedule[row_idx][col_idx] %}
-                        {% if subject %}
-                            <td class="subject-{{ subject_map[subject] }}" 
-                                onclick="editCell(this)"
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 翠海课程表 -->
+    <div style="margin-bottom: 40px;">
+        <h2 style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">翠海</h2>
+        <div style="overflow-x:auto;">
+            <table class="schedule-table" id="cuihai-table">
+                <thead>
+                    <tr>
+                        <th class="time-label">时间/日期</th>
+                        {% for day in days %}
+                        <th>{{ day }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row_idx in range(time_slots|length) %}
+                    <tr>
+                        <th class="time-label">
+                            {{ time_slots[row_idx] }}
+                            {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
+                        </th>
+                        {% for col_idx in range(days|length) %}
+                            <td onclick="editCell(this, 'cuihai')"
                                 data-row="{{ row_idx }}"
                                 data-col="{{ col_idx }}"
                                 data-day="{{ days[col_idx] }}"
                                 data-time="{{ time_slots[row_idx] }}"
-                                style="cursor: pointer;">{{ subject }}</td>
-                        {% else %}
-                            <td onclick="editCell(this)"
-                                data-row="{{ row_idx }}"
-                                data-col="{{ col_idx }}"
-                                data-day="{{ days[col_idx] }}"
-                                data-time="{{ time_slots[row_idx] }}"
+                                data-campus="cuihai"
                                 style="cursor: pointer;"></td>
-                        {% endif %}
+                        {% endfor %}
+                    </tr>
                     {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 玮鹏课程表 -->
+    <div style="margin-bottom: 40px;">
+        <h2 style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">玮鹏</h2>
+        <div style="overflow-x:auto;">
+            <table class="schedule-table" id="weipeng-table">
+                <thead>
+                    <tr>
+                        <th class="time-label">时间/日期</th>
+                        {% for day in days %}
+                        <th>{{ day }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row_idx in range(time_slots|length) %}
+                    <tr>
+                        <th class="time-label">
+                            {{ time_slots[row_idx] }}
+                            {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
+                        </th>
+                        {% for col_idx in range(days|length) %}
+                            <td onclick="editCell(this, 'weipeng')"
+                                data-row="{{ row_idx }}"
+                                data-col="{{ col_idx }}"
+                                data-day="{{ days[col_idx] }}"
+                                data-time="{{ time_slots[row_idx] }}"
+                                data-campus="weipeng"
+                                style="cursor: pointer;"></td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
@@ -189,8 +268,78 @@
             window.location.href = '?month=' + y + '-' + m;
         };
 
-        // ========== 编辑单元格时带上month ==========
-        function editCell(cell) {
+        // 页面加载时加载所有校区的数据
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCampusData('cuihai');
+            loadCampusData('weipeng');
+        });
+
+        // 加载指定校区的数据
+        function loadCampusData(campus) {
+            const month = yearSelect.value + '-' + monthSelect.value;
+            fetch(`/campus_schedule_data?month=${month}&campus=${campus}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        updateCampusTable(campus, data.schedule);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error loading campus data:', error);
+                });
+        }
+
+        // 更新指定校区的表格
+        function updateCampusTable(campus, scheduleData) {
+            const table = document.getElementById(campus + '-table');
+            if (!table) return;
+
+            const tbody = table.querySelector('tbody');
+            const rows = tbody.querySelectorAll('tr');
+            
+            for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
+                const cells = rows[rowIdx].querySelectorAll('td');
+                for (let colIdx = 0; colIdx < cells.length; colIdx++) {
+                    const cell = cells[colIdx];
+                    const subject = scheduleData[rowIdx] && scheduleData[rowIdx][colIdx];
+                    
+                    // 清除原有的class
+                    cell.className = cell.className.replace(/subject-\w+/g, '');
+                    
+                    if (subject) {
+                        // 根据科目添加对应的class
+                        let subjectClass = '';
+                        if (subject === '化学') {
+                            subjectClass = 'subject-chemistry';
+                        } else if (subject === '数学') {
+                            subjectClass = 'subject-math';
+                        } else if (subject === '物理') {
+                            subjectClass = 'subject-physics';
+                        } else if (subject === '语文') {
+                            subjectClass = 'subject-chinese';
+                        } else if (subject === '英语') {
+                            subjectClass = 'subject-english';
+                        } else if (subject === '政治') {
+                            subjectClass = 'subject-politics';
+                        } else if (subject === '历史') {
+                            subjectClass = 'subject-history';
+                        } else if (subject === '地理') {
+                            subjectClass = 'subject-geography';
+                        }
+                        
+                        if (subjectClass) {
+                            cell.classList.add(subjectClass);
+                        }
+                        cell.textContent = subject;
+                    } else {
+                        cell.textContent = '';
+                    }
+                }
+            }
+        }
+
+        // ========== 编辑单元格时带上month和campus ==========
+        function editCell(cell, campus) {
             const row = parseInt(cell.getAttribute('data-row'));
             const col = parseInt(cell.getAttribute('data-col'));
             const day = cell.getAttribute('data-day');
@@ -221,6 +370,7 @@
                     },
                     body: JSON.stringify({
                         month: month,
+                        campus: campus,
                         day_index: col,
                         time_slot_index: row,
                         subject: newValue,
@@ -232,6 +382,8 @@
                 .then(data => {
                     if (data.success) {
                         updateCellDisplay(cell, newValue);
+                        // 重新加载对应校区的数据
+                        loadCampusData(campus);
                     } else {
                         alert('保存失败: ' + (data.message || '未知错误'));
                         cell.innerHTML = originalContent;
