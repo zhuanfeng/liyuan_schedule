@@ -100,6 +100,14 @@
             font-weight: bold;
             min-width: 90px;
         }
+        .period-label {
+            background: #ffe3ec !important;
+            color: #ff6f91 !important;
+            font-weight: bold;
+            min-width: 60px;
+            vertical-align: middle;
+            text-align: center;
+        }
         @media (max-width: 1200px) {
             .schedule-table {
                 min-width: 900px;
@@ -126,16 +134,21 @@
             <thead>
                 <tr>
                     <th class="time-label">时间/日期</th>
+                    <th class="period-label">时段</th>
                     <!-- 其余日期th由JS动态生成 -->
                 </tr>
             </thead>
             <tbody>
                 {% for row_idx in range(time_slots|length) %}
                 <tr>
-                    <th class="time-label">
-                        {{ time_slots[row_idx] }}
-                        {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
-                    </th>
+                    <th class="time-label">{{ time_slots[row_idx] }}</th>
+                    {% if row_idx == 0 %}
+                    <td class="period-label" rowspan="4">上午</td>
+                    {% elif row_idx == 4 %}
+                    <td class="period-label" rowspan="4">下午</td>
+                    {% elif row_idx == 8 %}
+                    <td class="period-label" rowspan="2">晚上</td>
+                    {% endif %}
                     {% for col_idx in range(days|length) %}
                         <td onclick="editCell(this, 'wendefu')"
                             data-row="{{ row_idx }}"
@@ -158,16 +171,21 @@
             <thead>
                 <tr>
                     <th class="time-label">时间/日期</th>
+                    <th class="period-label">时段</th>
                     <!-- 其余日期th由JS动态生成 -->
                 </tr>
             </thead>
             <tbody>
                 {% for row_idx in range(time_slots|length) %}
                 <tr>
-                    <th class="time-label">
-                        {{ time_slots[row_idx] }}
-                        {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
-                    </th>
+                    <th class="time-label">{{ time_slots[row_idx] }}</th>
+                    {% if row_idx == 0 %}
+                    <td class="period-label" rowspan="4">上午</td>
+                    {% elif row_idx == 4 %}
+                    <td class="period-label" rowspan="4">下午</td>
+                    {% elif row_idx == 8 %}
+                    <td class="period-label" rowspan="2">晚上</td>
+                    {% endif %}
                     {% for col_idx in range(days|length) %}
                         <td onclick="editCell(this, 'cuihai')"
                             data-row="{{ row_idx }}"
@@ -190,16 +208,21 @@
             <thead>
                 <tr>
                     <th class="time-label">时间/日期</th>
+                    <th class="period-label">时段</th>
                     <!-- 其余日期th由JS动态生成 -->
                 </tr>
             </thead>
             <tbody>
                 {% for row_idx in range(time_slots|length) %}
                 <tr>
-                    <th class="time-label">
-                        {{ time_slots[row_idx] }}
-                        {% if row_idx == 0 %}<div>上午</div>{% elif row_idx == 4 %}<div>下午</div>{% elif row_idx == 8 %}<div>晚上</div>{% endif %}
-                    </th>
+                    <th class="time-label">{{ time_slots[row_idx] }}</th>
+                    {% if row_idx == 0 %}
+                    <td class="period-label" rowspan="4">上午</td>
+                    {% elif row_idx == 4 %}
+                    <td class="period-label" rowspan="4">下午</td>
+                    {% elif row_idx == 8 %}
+                    <td class="period-label" rowspan="2">晚上</td>
+                    {% endif %}
                     {% for col_idx in range(days|length) %}
                         <td onclick="editCell(this, 'weipeng')"
                             data-row="{{ row_idx }}"
@@ -292,8 +315,10 @@
             
             for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
                 const cells = rows[rowIdx].querySelectorAll('td');
+                // 跳过第一个td（时段列），从第二个td开始更新课程数据
                 for (let colIdx = 0; colIdx < scheduleData[0].length; colIdx++) {
-                    const cell = cells[colIdx];
+                    const cell = cells[colIdx + 1]; // +1 是因为要跳过时段列
+                    if (!cell) continue;
                     const subject = scheduleData[rowIdx] && scheduleData[rowIdx][colIdx];
                     // 清除原有的class
                     cell.className = cell.className.replace(/subject-\w+/g, '');
@@ -323,8 +348,8 @@
             const thead = table.querySelector('thead');
             if (!thead) return;
             const headerRow = thead.querySelector('tr');
-            // 保留第一个th（时间/日期），其余全部移除
-            while (headerRow.children.length > 1) {
+            // 保留前两个th（时间/日期和时段），其余全部移除
+            while (headerRow.children.length > 2) {
                 headerRow.removeChild(headerRow.lastChild);
             }
             // 添加新的日期th
