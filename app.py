@@ -683,6 +683,9 @@ init_db()
 def campus_schedule():
     # 获取当前月份参数
     month = request.args.get('month') if request.method == 'GET' else request.json.get('month')
+    # 获取当前校区参数
+    campus = request.args.get('campus', 'wendefu')
+    
     # 默认当前年月
     if not month:
         today = datetime.date.today()
@@ -791,7 +794,8 @@ def campus_schedule():
                          days=days, 
                          time_slots=time_slots, 
                          schedule=schedule,
-                         current_month=month)
+                         current_month=month,
+                         current_campus=campus)
 
 @app.route('/campus_schedule_data', methods=['GET'])
 def campus_schedule_data():

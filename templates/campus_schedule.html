@@ -120,17 +120,28 @@
     <div class="date-range">{{ date_range }}</div>
     <div style="text-align:center; margin-bottom: 18px;">
         <form id="monthForm" style="display:inline-block;">
+            <label style="font-weight:bold;color:#ff6f91;">选择校区：</label>
+            <select id="campusSelect" name="campus" style="margin-right:10px;">
+                <option value="wendefu" {% if current_campus == 'wendefu' %}selected{% endif %}>文德福</option>
+                <option value="cuihai" {% if current_campus == 'cuihai' %}selected{% endif %}>翠海</option>
+                <option value="weipeng" {% if current_campus == 'weipeng' %}selected{% endif %}>玮鹏</option>
+            </select>
             <label style="font-weight:bold;color:#ff6f91;">选择月份：</label>
             <select id="yearSelect" name="year" style="margin-right:6px;"></select>
             <select id="monthSelect" name="month"></select>
         </form>
     </div>
 
-    <!-- 文德福课程表 -->
+    <!-- 单个校区课程表 -->
     <div style="margin-bottom: 40px;">
-        <h2 style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">文德福</h2>
+        <h2 id="campusTitle" style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">
+            {% if current_campus == 'wendefu' %}文德福
+            {% elif current_campus == 'cuihai' %}翠海
+            {% elif current_campus == 'weipeng' %}玮鹏
+            {% else %}文德福{% endif %}
+        </h2>
         {% set subject_map = {'化学': 'chemistry', '数学': 'math', '物理': 'physics', '语文': 'chinese', '英语': 'english', '政治': 'politics', '历史': 'history', '地理': 'geography'} %}
-        <table class="schedule-table" id="wendefu-table">
+        <table class="schedule-table" id="campus-table">
             <thead>
                 <tr>
                     <th class="time-label">时间/日期</th>
@@ -150,86 +161,11 @@
                     <td class="period-label" rowspan="2">晚上</td>
                     {% endif %}
                     {% for col_idx in range(days|length) %}
-                        <td onclick="editCell(this, 'wendefu')"
+                        <td onclick="editCell(this)"
                             data-row="{{ row_idx }}"
                             data-col="{{ col_idx }}"
                             data-day="{{ days[col_idx] }}"
                             data-time="{{ time_slots[row_idx] }}"
-                            data-campus="wendefu"
-                            style="cursor: pointer;"></td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <!-- 翠海课程表 -->
-    <div style="margin-bottom: 40px;">
-        <h2 style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">翠海</h2>
-        <table class="schedule-table" id="cuihai-table">
-            <thead>
-                <tr>
-                    <th class="time-label">时间/日期</th>
-                    <th class="period-label">时段</th>
-                    <!-- 其余日期th由JS动态生成 -->
-                </tr>
-            </thead>
-            <tbody>
-                {% for row_idx in range(time_slots|length) %}
-                <tr>
-                    <th class="time-label">{{ time_slots[row_idx] }}</th>
-                    {% if row_idx == 0 %}
-                    <td class="period-label" rowspan="4">上午</td>
-                    {% elif row_idx == 4 %}
-                    <td class="period-label" rowspan="4">下午</td>
-                    {% elif row_idx == 8 %}
-                    <td class="period-label" rowspan="2">晚上</td>
-                    {% endif %}
-                    {% for col_idx in range(days|length) %}
-                        <td onclick="editCell(this, 'cuihai')"
-                            data-row="{{ row_idx }}"
-                            data-col="{{ col_idx }}"
-                            data-day="{{ days[col_idx] }}"
-                            data-time="{{ time_slots[row_idx] }}"
-                            data-campus="cuihai"
-                            style="cursor: pointer;"></td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-
-    <!-- 玮鹏课程表 -->
-    <div style="margin-bottom: 40px;">
-        <h2 style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">玮鹏</h2>
-        <table class="schedule-table" id="weipeng-table">
-            <thead>
-                <tr>
-                    <th class="time-label">时间/日期</th>
-                    <th class="period-label">时段</th>
-                    <!-- 其余日期th由JS动态生成 -->
-                </tr>
-            </thead>
-            <tbody>
-                {% for row_idx in range(time_slots|length) %}
-                <tr>
-                    <th class="time-label">{{ time_slots[row_idx] }}</th>
-                    {% if row_idx == 0 %}
-                    <td class="period-label" rowspan="4">上午</td>
-                    {% elif row_idx == 4 %}
-                    <td class="period-label" rowspan="4">下午</td>
-                    {% elif row_idx == 8 %}
-                    <td class="period-label" rowspan="2">晚上</td>
-                    {% endif %}
-                    {% for col_idx in range(days|length) %}
-                        <td onclick="editCell(this, 'weipeng')"
-                            data-row="{{ row_idx }}"
-                            data-col="{{ col_idx }}"
-                            data-day="{{ days[col_idx] }}"
-                            data-time="{{ time_slots[row_idx] }}"
-                            data-campus="weipeng"
                             style="cursor: pointer;"></td>
                     {% endfor %}
                 </tr>
@@ -241,9 +177,12 @@
     <script>
         // ========== 月份选择控件 ===========
         const currentMonth = "{{ current_month }}";
+        const currentCampus = "{{ current_campus }}";
         const [curYear, curMonth] = currentMonth.split('-');
         const yearSelect = document.getElementById('yearSelect');
         const monthSelect = document.getElementById('monthSelect');
+        const campusSelect = document.getElementById('campusSelect');
+        
         // 年份范围
         for(let y=2020; y<=2030; y++) {
             let opt = document.createElement('option');
@@ -252,6 +191,7 @@
             if(y == curYear) opt.selected = true;
             yearSelect.appendChild(opt);
         }
+        
         // 月份
         for(let m=1; m<=12; m++) {
             let opt = document.createElement('option');
@@ -260,31 +200,43 @@
             if(m == parseInt(curMonth)) opt.selected = true;
             monthSelect.appendChild(opt);
         }
+        
         // 切换时动态更新页面
-        yearSelect.onchange = monthSelect.onchange = function() {
+        yearSelect.onchange = monthSelect.onchange = campusSelect.onchange = function() {
             const y = yearSelect.value;
             const m = monthSelect.value;
+            const campus = campusSelect.value;
             
             // 更新URL但不刷新页面
-            const newUrl = '?month=' + y + '-' + m;
+            const newUrl = `?month=${y}-${m}&campus=${campus}`;
             window.history.pushState({}, '', newUrl);
+            
+            // 更新校区标题
+            updateCampusTitle(campus);
             
             // 更新日期范围显示
             updateDateRange();
             
-            // 重新加载所有校区的数据
-            loadCampusData('wendefu');
-            loadCampusData('cuihai');
-            loadCampusData('weipeng');
+            // 重新加载当前校区的数据
+            loadCampusData(campus);
         };
 
-        // 页面加载时加载所有校区的数据
+        // 更新校区标题
+        function updateCampusTitle(campus) {
+            const campusTitle = document.getElementById('campusTitle');
+            const campusNames = {
+                'wendefu': '文德福',
+                'cuihai': '翠海',
+                'weipeng': '玮鹏'
+            };
+            campusTitle.textContent = campusNames[campus] || '文德福';
+        }
+
+        // 页面加载时加载当前校区的数据
         document.addEventListener('DOMContentLoaded', function() {
             // 延迟加载，确保页面完全加载后再加载数据
             setTimeout(function() {
-                loadCampusData('wendefu');
-                loadCampusData('cuihai');
-                loadCampusData('weipeng');
+                loadCampusData(campusSelect.value);
                 updateDateRange();
             }, 100);
         });
@@ -296,8 +248,8 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        updateTableHeader(campus, data.days);
-                        updateCampusTable(campus, data.schedule);
+                        updateTableHeader(data.days);
+                        updateCampusTable(data.schedule);
                     }
                 })
                 .catch(error => {
@@ -306,8 +258,8 @@
         }
 
         // 更新指定校区的表格
-        function updateCampusTable(campus, scheduleData) {
-            const table = document.getElementById(campus + '-table');
+        function updateCampusTable(scheduleData) {
+            const table = document.getElementById('campus-table');
             if (!table) return;
 
             const tbody = table.querySelector('tbody');
@@ -342,8 +294,8 @@
         }
 
         // 动态更新表头
-        function updateTableHeader(campus, days) {
-            const table = document.getElementById(campus + '-table');
+        function updateTableHeader(days) {
+            const table = document.getElementById('campus-table');
             if (!table) return;
             const thead = table.querySelector('thead');
             if (!thead) return;
@@ -377,7 +329,7 @@
         }
 
         // ========== 编辑单元格时带上month和campus ==========
-        function editCell(cell, campus) {
+        function editCell(cell) {
             const row = parseInt(cell.getAttribute('data-row'));
             const col = parseInt(cell.getAttribute('data-col'));
             const day = cell.getAttribute('data-day');
@@ -408,7 +360,7 @@
                     },
                     body: JSON.stringify({
                         month: month,
-                        campus: campus,
+                        campus: campusSelect.value, // 使用campusSelect的值
                         day_index: col,
                         time_slot_index: row,
                         subject: newValue,
@@ -421,7 +373,7 @@
                     if (data.success) {
                         updateCellDisplay(cell, newValue);
                         // 重新加载对应校区的数据
-                        loadCampusData(campus);
+                        loadCampusData(campusSelect.value);
                     } else {
                         alert('保存失败: ' + (data.message || '未知错误'));
                         cell.innerHTML = originalContent;
