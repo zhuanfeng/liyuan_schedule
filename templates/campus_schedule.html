@@ -31,6 +31,23 @@
             color: #ff6f91;
             margin: 30px 0 20px 0;
             letter-spacing: 1px;
+            position: relative;
+        }
+        .delete-btn {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #ff6f91;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .delete-btn:hover {
+            background: #ff5577;
         }
         .schedule-table {
             margin: 0 auto 40px auto;
@@ -116,6 +133,40 @@
             vertical-align: middle;
             text-align: center;
         }
+        .type-switch {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .type-switch button {
+            background: #ff6f91;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        .type-switch button.active {
+            background: #ff5577;
+        }
+        .type-switch button:hover {
+            background: #ff5577;
+        }
+        .add-schedule-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 20px auto;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: block;
+        }
+        .add-schedule-btn:hover {
+            background: #218838;
+        }
         @media (max-width: 1200px) {
             .schedule-table {
                 min-width: 900px;
@@ -140,6 +191,17 @@
         </form>
     </div>
 
+    <!-- 课表类型切换 -->
+    <div class="type-switch">
+        <button id="classroomBtn">教室课表</button>
+        <button id="studentBtn">学生课表</button>
+    </div>
+
+    <!-- 新增学生课表按钮 -->
+    <button id="addStudentBtn" class="add-schedule-btn">
+        新增学生课表
+    </button>
+
     <!-- 多个课程表容器 -->
     <div id="classroomContainer">
         <!-- 课程表将由JavaScript动态生成 -->
@@ -160,13 +222,17 @@
             "19:00-20:00", "20:00-21:00"
         ];
 
-        // ========== 月份选择控件 ===========
+        // ========== 全局变量 ===========
         const currentMonth = "{{ current_month }}";
         const currentCampus = "{{ current_campus }}";
+        const currentType = "{{ current_type }}";
         const [curYear, curMonth] = currentMonth.split('-');
         const yearSelect = document.getElementById('yearSelect');
         const monthSelect = document.getElementById('monthSelect');
         const campusSelect = document.getElementById('campusSelect');
+        const classroomBtn = document.getElementById('classroomBtn');
+        const studentBtn = document.getElementById('studentBtn');
+        const addStudentBtn = document.getElementById('addStudentBtn');
         
         // 年份范围
         for(let y=2020; y<=2030; y++) {
@@ -186,70 +252,148 @@
             monthSelect.appendChild(opt);
         }
         
-        // 切换时动态更新页面
-        yearSelect.onchange = monthSelect.onchange = campusSelect.onchange = function() {
+        // 课表类型切换
+        let currentScheduleType = currentType;
+        
+        classroomBtn.onclick = function() {
+            if (currentScheduleType !== 'classroom') {
+                currentScheduleType = 'classroom';
+                updateTypeButtons();
+                updateURL();
+                loadScheduleData();
+            }
+        };
+        
+        studentBtn.onclick = function() {
+            if (currentScheduleType !== 'student') {
+                currentScheduleType = 'student';
+                updateTypeButtons();
+                updateURL();
+                loadScheduleData();
+            }
+        };
+        
+        // 更新按钮状态
+        function updateTypeButtons() {
+            classroomBtn.classList.toggle('active', currentScheduleType === 'classroom');
+            studentBtn.classList.toggle('active', currentScheduleType === 'student');
+            addStudentBtn.style.display = currentScheduleType === 'student' ? 'block' : 'none';
+        }
+        
+        // 更新URL
+        function updateURL() {
             const y = yearSelect.value;
             const m = monthSelect.value;
             const campus = campusSelect.value;
-            
-            // 更新URL但不刷新页面
-            const newUrl = `?month=${y}-${m}&campus=${campus}`;
+            const newUrl = `?month=${y}-${m}&campus=${campus}&type=${currentScheduleType}`;
             window.history.pushState({}, '', newUrl);
-            
-            // 更新日期范围显示
+        }
+        
+        // 切换时动态更新页面
+        yearSelect.onchange = monthSelect.onchange = campusSelect.onchange = function() {
+            updateURL();
             updateDateRange();
-            
-            // 重新加载当前校区的所有课程表
-            loadAllClassrooms(campus);
+            loadScheduleData();
+        };
+
+        // 新增学生课表
+        addStudentBtn.onclick = function() {
+            const studentName = prompt('请输入学生课表名称：');
+            if (studentName && studentName.trim()) {
+                const month = yearSelect.value + '-' + monthSelect.value;
+                fetch('/add_student_schedule', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        month: month,
+                        campus: campusSelect.value,
+                        student_name: studentName.trim()
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        loadScheduleData();
+                    } else {
+                        alert('添加失败: ' + (data.message || '未知错误'));
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('添加失败: 网络错误');
+                });
+            }
         };
 
         // 页面加载时加载当前校区的数据
         document.addEventListener('DOMContentLoaded', function() {
+            // 初始化按钮状态
+            updateTypeButtons();
+            
             setTimeout(function() {
-                loadAllClassrooms(campusSelect.value);
+                loadScheduleData();
                 updateDateRange();
             }, 100);
         });
 
-        // 加载指定校区的所有教室数据
-        function loadAllClassrooms(campus) {
+        // 加载课表数据
+        function loadScheduleData() {
             const month = yearSelect.value + '-' + monthSelect.value;
-            fetch(`/campus_schedule_data?month=${month}&campus=${campus}`)
+            fetch(`/campus_schedule_data?month=${month}&campus=${campusSelect.value}&type=${currentScheduleType}`)
                 .then(response => response.json())
                 .then(data => {
-                    console.log('Received data:', data); // 调试用
+                    console.log('Received data:', data);
                     if (data.success) {
-                        generateClassroomTables(data.all_schedules, data.classrooms, data.days);
+                        generateScheduleTables(data.all_schedules, data.schedules_list, data.days, data.type);
                     } else {
                         console.error('Failed to load data:', data.message);
                     }
                 })
                 .catch(error => {
-                    console.error('Error loading campus data:', error);
+                    console.error('Error loading data:', error);
                 });
         }
 
-        // 生成所有教室的课程表
-        function generateClassroomTables(allSchedules, classrooms, days) {
+        // 生成课程表
+        function generateScheduleTables(allSchedules, schedulesList, days, type) {
             const container = document.getElementById('classroomContainer');
             container.innerHTML = '';
 
-            if (!allSchedules || !classrooms || !days) {
-                console.error('Missing required data:', { allSchedules, classrooms, days });
+            if (!allSchedules || !schedulesList || !days) {
+                console.error('Missing required data:', { allSchedules, schedulesList, days });
                 return;
             }
 
-            classrooms.forEach(classroom => {
-                // 创建教室标题
-                const title = document.createElement('div');
-                title.className = 'classroom-title';
-                title.textContent = `教室${classroom.toUpperCase()}`;
-                container.appendChild(title);
+            schedulesList.forEach(scheduleName => {
+                // 创建标题
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'classroom-title';
+                
+                if (type === 'classroom') {
+                    titleDiv.textContent = `教室${scheduleName.toUpperCase()}`;
+                } else {
+                    titleDiv.textContent = scheduleName;
+                    
+                    // 为学生课表添加删除按钮
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'delete-btn';
+                    deleteBtn.textContent = '删除';
+                    deleteBtn.onclick = function() {
+                        if (confirm(`确定要删除课表"${scheduleName}"吗？`)) {
+                            deleteStudentSchedule(scheduleName);
+                        }
+                    };
+                    titleDiv.appendChild(deleteBtn);
+                }
+                
+                container.appendChild(titleDiv);
 
                 // 创建课程表
                 const table = document.createElement('table');
                 table.className = 'schedule-table';
-                table.id = `classroom-${classroom}-table`;
+                table.id = `schedule-${scheduleName}-table`;
 
                 // 创建表头
                 const thead = document.createElement('thead');
@@ -318,11 +462,17 @@
                         cell.setAttribute('data-col', colIdx);
                         cell.setAttribute('data-day', days[colIdx]);
                         cell.setAttribute('data-time', timeSlots[rowIdx]);
-                        cell.setAttribute('data-classroom', classroom);
+                        
+                        if (type === 'classroom') {
+                            cell.setAttribute('data-classroom', scheduleName);
+                        } else {
+                            cell.setAttribute('data-student', scheduleName);
+                        }
+                        
                         cell.onclick = function() { editCell(this); };
                         
                         // 填充数据
-                        const scheduleData = allSchedules[classroom];
+                        const scheduleData = allSchedules[scheduleName];
                         if (scheduleData && scheduleData[rowIdx] && scheduleData[rowIdx][colIdx]) {
                             const subject = scheduleData[rowIdx][colIdx];
                             updateCellDisplay(cell, subject);
@@ -336,6 +486,34 @@
                 
                 table.appendChild(tbody);
                 container.appendChild(table);
+            });
+        }
+
+        // 删除学生课表
+        function deleteStudentSchedule(studentName) {
+            const month = yearSelect.value + '-' + monthSelect.value;
+            fetch('/delete_student_schedule', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    month: month,
+                    campus: campusSelect.value,
+                    student_name: studentName
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    loadScheduleData();
+                } else {
+                    alert('删除失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('删除失败: 网络错误');
             });
         }
 
@@ -362,6 +540,7 @@
             const day = cell.getAttribute('data-day');
             const time = cell.getAttribute('data-time');
             const classroom = cell.getAttribute('data-classroom');
+            const student = cell.getAttribute('data-student');
             const currentText = cell.textContent.trim();
             
             const input = document.createElement('input');
@@ -384,21 +563,29 @@
                 const newValue = input.value.trim();
                 const month = yearSelect.value + '-' + monthSelect.value;
                 
+                const requestData = {
+                    month: month,
+                    campus: campusSelect.value,
+                    type: currentScheduleType,
+                    day_index: col,
+                    time_slot_index: row,
+                    subject: newValue,
+                    day_label: day,
+                    time_slot: time
+                };
+                
+                if (currentScheduleType === 'classroom') {
+                    requestData.classroom = classroom;
+                } else {
+                    requestData.student_name = student;
+                }
+                
                 fetch('/campus_schedule', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({
-                        month: month,
-                        campus: campusSelect.value,
-                        classroom: classroom,
-                        day_index: col,
-                        time_slot_index: row,
-                        subject: newValue,
-                        day_label: day,
-                        time_slot: time
-                    })
+                    body: JSON.stringify(requestData)
                 })
                 .then(response => response.json())
                 .then(data => {

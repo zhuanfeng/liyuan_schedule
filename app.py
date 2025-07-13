@@ -663,6 +663,38 @@ def init_db():
             ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
         """)
         
+        # 学生课程表：新增表，唯一索引为(month, campus, student_name, day_index, time_slot_index)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS student_schedule (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                schedule_title VARCHAR(100) NOT NULL DEFAULT '暑假崇达数理化课程表',
+                date_range VARCHAR(50) NOT NULL DEFAULT '2025.7.13-7.31',
+                month VARCHAR(7) NOT NULL DEFAULT '2025-07',
+                campus VARCHAR(20) NOT NULL DEFAULT 'wendefu',
+                student_name VARCHAR(50) NOT NULL,
+                day_index INT NOT NULL,
+                time_slot_index INT NOT NULL,
+                day_label VARCHAR(20) NOT NULL,
+                time_slot VARCHAR(20) NOT NULL,
+                subject VARCHAR(20) DEFAULT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_student_schedule (month, campus, student_name, day_index, time_slot_index)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+        
+        # 学生课程表名称管理表
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS student_schedule_names (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                month VARCHAR(7) NOT NULL DEFAULT '2025-07',
+                campus VARCHAR(20) NOT NULL DEFAULT 'wendefu',
+                student_name VARCHAR(50) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE KEY unique_student_name (month, campus, student_name)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        """)
+        
         # 检查是否需要添加classroom字段
         cursor.execute("SHOW COLUMNS FROM campus_schedule LIKE 'classroom'")
         if not cursor.fetchone():
@@ -690,7 +722,9 @@ def campus_schedule():
     month = request.args.get('month') if request.method == 'GET' else request.json.get('month')
     # 获取当前校区参数
     campus = request.args.get('campus', 'wendefu')
-    
+    # 获取课表类型参数
+    schedule_type = request.args.get('type', 'classroom')  # 默认为教室课表
+
     # 默认当前年月
     if not month:
         today = datetime.date.today()
@@ -700,7 +734,7 @@ def campus_schedule():
         # 处理课程表更新
         data = request.get_json()
         campus = data.get('campus', 'wendefu')
-        classroom = data.get('classroom', 'a')
+        schedule_type = data.get('type', 'classroom')
         day_index = data.get('day_index')
         time_slot_index = data.get('time_slot_index')
         subject = data.get('subject')
@@ -713,27 +747,47 @@ def campus_schedule():
         
         cursor = connection.cursor()
         try:
-            if subject and subject.strip():
-                # 插入或更新课程
-                query = """
-                    INSERT INTO campus_schedule (month, campus, classroom, day_index, time_slot_index, day_label, time_slot, subject)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                    ON DUPLICATE KEY UPDATE 
-                    subject = %s,
-                    day_label = %s,
-                    time_slot = %s,
-                    updated_at = CURRENT_TIMESTAMP
-                """
-                cursor.execute(query, (month, campus, classroom, day_index, time_slot_index, day_label, time_slot, subject, subject, day_label, time_slot))
-            else:
-                # 删除课程
-                query = "DELETE FROM campus_schedule WHERE month = %s AND campus = %s AND classroom = %s AND day_index = %s AND time_slot_index = %s"
-                cursor.execute(query, (month, campus, classroom, day_index, time_slot_index))
+            if schedule_type == 'classroom':
+                classroom = data.get('classroom', 'a')
+                if subject and subject.strip():
+                    # 插入或更新课程
+                    query = """
+                        INSERT INTO campus_schedule (month, campus, classroom, day_index, time_slot_index, day_label, time_slot, subject)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE 
+                        subject = %s,
+                        day_label = %s,
+                        time_slot = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    """
+                    cursor.execute(query, (month, campus, classroom, day_index, time_slot_index, day_label, time_slot, subject, subject, day_label, time_slot))
+                else:
+                    # 删除课程
+                    query = "DELETE FROM campus_schedule WHERE month = %s AND campus = %s AND classroom = %s AND day_index = %s AND time_slot_index = %s"
+                    cursor.execute(query, (month, campus, classroom, day_index, time_slot_index))
+            else:  # student
+                student_name = data.get('student_name')
+                if subject and subject.strip():
+                    # 插入或更新课程
+                    query = """
+                        INSERT INTO student_schedule (month, campus, student_name, day_index, time_slot_index, day_label, time_slot, subject)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE 
+                        subject = %s,
+                        day_label = %s,
+                        time_slot = %s,
+                        updated_at = CURRENT_TIMESTAMP
+                    """
+                    cursor.execute(query, (month, campus, student_name, day_index, time_slot_index, day_label, time_slot, subject, subject, day_label, time_slot))
+                else:
+                    # 删除课程
+                    query = "DELETE FROM student_schedule WHERE month = %s AND campus = %s AND student_name = %s AND day_index = %s AND time_slot_index = %s"
+                    cursor.execute(query, (month, campus, student_name, day_index, time_slot_index))
             
             connection.commit()
             return jsonify({"success": True})
         except Exception as e:
-            print(f"Error updating campus schedule: {str(e)}")
+            print(f"Error updating schedule: {str(e)}")
             return jsonify({"success": False, "message": str(e)}), 500
         finally:
             cursor.close()
@@ -809,14 +863,76 @@ def campus_schedule():
                          schedule=schedule,
                          current_month=month,
                          current_campus=campus,
+                         current_type=schedule_type,
                          campus_classrooms=campus_classrooms)
+
+@app.route('/add_student_schedule', methods=['POST'])
+def add_student_schedule():
+    """添加新的学生课表"""
+    data = request.get_json()
+    month = data.get('month')
+    campus = data.get('campus')
+    student_name = data.get('student_name')
+    
+    if not all([month, campus, student_name]):
+        return jsonify({"success": False, "message": "缺少必要参数"}), 400
+    
+    connection = get_db_connection()
+    if not connection:
+        return jsonify({"success": False, "message": "数据库连接错误"}), 500
+    
+    cursor = connection.cursor()
+    try:
+        # 插入学生课表名称
+        query = "INSERT INTO student_schedule_names (month, campus, student_name) VALUES (%s, %s, %s)"
+        cursor.execute(query, (month, campus, student_name))
+        connection.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error adding student schedule: {str(e)}")
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
+
+@app.route('/delete_student_schedule', methods=['POST'])
+def delete_student_schedule():
+    """删除学生课表"""
+    data = request.get_json()
+    month = data.get('month')
+    campus = data.get('campus')
+    student_name = data.get('student_name')
+    
+    if not all([month, campus, student_name]):
+        return jsonify({"success": False, "message": "缺少必要参数"}), 400
+    
+    connection = get_db_connection()
+    if not connection:
+        return jsonify({"success": False, "message": "数据库连接错误"}), 500
+    
+    cursor = connection.cursor()
+    try:
+        # 删除学生课表数据
+        query = "DELETE FROM student_schedule WHERE month = %s AND campus = %s AND student_name = %s"
+        cursor.execute(query, (month, campus, student_name))
+        # 删除学生课表名称
+        query = "DELETE FROM student_schedule_names WHERE month = %s AND campus = %s AND student_name = %s"
+        cursor.execute(query, (month, campus, student_name))
+        connection.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        print(f"Error deleting student schedule: {str(e)}")
+        return jsonify({"success": False, "message": str(e)}), 500
+    finally:
+        cursor.close()
+        connection.close()
 
 @app.route('/campus_schedule_data', methods=['GET'])
 def campus_schedule_data():
     # 获取参数
     month = request.args.get('month')
     campus = request.args.get('campus', 'wendefu')
-    classroom = request.args.get('classroom')  # 不设置默认值
+    schedule_type = request.args.get('type', 'classroom')
     
     if not month:
         today = datetime.date.today()
@@ -863,34 +979,62 @@ def campus_schedule_data():
         "19:00-20:00", "20:00-21:00"
     ]
     
-    # 定义校区和对应的教室数量
-    campus_classrooms = {
-        'wendefu': ['a', 'b', 'c', 'd'],  # 文德福4个教室
-        'cuihai': ['a', 'b'],             # 翠海2个教室
-        'weipeng': ['a', 'b', 'c', 'd', 'e']  # 玮鹏5个教室
-    }
-    
-    classrooms = campus_classrooms.get(campus, ['a'])
-    all_schedules = {}
-    
     cursor = connection.cursor(dictionary=True)
-    for classroom_name in classrooms:
-        query = "SELECT day_index, time_slot_index, subject FROM campus_schedule WHERE month = %s AND campus = %s AND classroom = %s"
-        cursor.execute(query, (month, campus, classroom_name))
-        db_schedule = cursor.fetchall()
+    all_schedules = {}
+    schedules_list = []
+    
+    if schedule_type == 'classroom':
+        # 定义校区和对应的教室数量
+        campus_classrooms = {
+            'wendefu': ['a', 'b', 'c', 'd'],  # 文德福4个教室
+            'cuihai': ['a', 'b'],             # 翠海2个教室
+            'weipeng': ['a', 'b', 'c', 'd', 'e']  # 玮鹏5个教室
+        }
         
-        # 初始化空的课程表
-        schedule = [["" for _ in range(len(days))] for _ in range(len(time_slots))]
+        classrooms = campus_classrooms.get(campus, ['a'])
+        schedules_list = classrooms
         
-        # 填充从数据库读取的数据
-        for entry in db_schedule:
-            day_idx = entry['day_index']
-            time_idx = entry['time_slot_index']
-            subject = entry['subject']
-            if 0 <= time_idx < len(time_slots) and 0 <= day_idx < len(days):
-                schedule[time_idx][day_idx] = subject
+        for classroom_name in classrooms:
+            query = "SELECT day_index, time_slot_index, subject FROM campus_schedule WHERE month = %s AND campus = %s AND classroom = %s"
+            cursor.execute(query, (month, campus, classroom_name))
+            db_schedule = cursor.fetchall()
+            
+            # 初始化空的课程表
+            schedule = [["" for _ in range(len(days))] for _ in range(len(time_slots))]
+            
+            # 填充从数据库读取的数据
+            for entry in db_schedule:
+                day_idx = entry['day_index']
+                time_idx = entry['time_slot_index']
+                subject = entry['subject']
+                if 0 <= time_idx < len(time_slots) and 0 <= day_idx < len(days):
+                    schedule[time_idx][day_idx] = subject
+            
+            all_schedules[classroom_name] = schedule
+    else:  # student
+        # 获取学生课表名称列表
+        query = "SELECT student_name FROM student_schedule_names WHERE month = %s AND campus = %s ORDER BY created_at"
+        cursor.execute(query, (month, campus))
+        student_names = cursor.fetchall()
+        schedules_list = [item['student_name'] for item in student_names]
         
-        all_schedules[classroom_name] = schedule
+        for student_name in schedules_list:
+            query = "SELECT day_index, time_slot_index, subject FROM student_schedule WHERE month = %s AND campus = %s AND student_name = %s"
+            cursor.execute(query, (month, campus, student_name))
+            db_schedule = cursor.fetchall()
+            
+            # 初始化空的课程表
+            schedule = [["" for _ in range(len(days))] for _ in range(len(time_slots))]
+            
+            # 填充从数据库读取的数据
+            for entry in db_schedule:
+                day_idx = entry['day_index']
+                time_idx = entry['time_slot_index']
+                subject = entry['subject']
+                if 0 <= time_idx < len(time_slots) and 0 <= day_idx < len(days):
+                    schedule[time_idx][day_idx] = subject
+            
+            all_schedules[student_name] = schedule
     
     cursor.close()
     connection.close()
@@ -898,11 +1042,12 @@ def campus_schedule_data():
     return jsonify({
         "success": True,
         "all_schedules": all_schedules,
-        "classrooms": classrooms,
+        "schedules_list": schedules_list,
         "campus": campus,
         "month": month,
         "days": days,
-        "time_slots": time_slots
+        "time_slots": time_slots,
+        "type": schedule_type
     })
 
 if __name__ == '__main__':
