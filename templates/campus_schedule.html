@@ -24,8 +24,16 @@
             color: #ff6f91;
             margin-bottom: 20px;
         }
+        .classroom-title {
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ff6f91;
+            margin: 30px 0 20px 0;
+            letter-spacing: 1px;
+        }
         .schedule-table {
-            margin: 0 auto;
+            margin: 0 auto 40px auto;
             background: #fff;
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -132,49 +140,26 @@
         </form>
     </div>
 
-    <!-- 单个校区课程表 -->
-    <div style="margin-bottom: 40px;">
-        <h2 id="campusTitle" style="text-align: center; color: #ff6f91; font-size: 1.8rem; margin-bottom: 20px;">
-            {% if current_campus == 'wendefu' %}文德福
-            {% elif current_campus == 'cuihai' %}翠海
-            {% elif current_campus == 'weipeng' %}玮鹏
-            {% else %}文德福{% endif %}
-        </h2>
-        {% set subject_map = {'化学': 'chemistry', '数学': 'math', '物理': 'physics', '语文': 'chinese', '英语': 'english', '政治': 'politics', '历史': 'history', '地理': 'geography'} %}
-        <table class="schedule-table" id="campus-table">
-            <thead>
-                <tr>
-                    <th class="time-label">时间/日期</th>
-                    <th class="period-label">时段</th>
-                    <!-- 其余日期th由JS动态生成 -->
-                </tr>
-            </thead>
-            <tbody>
-                {% for row_idx in range(time_slots|length) %}
-                <tr>
-                    <th class="time-label">{{ time_slots[row_idx] }}</th>
-                    {% if row_idx == 0 %}
-                    <td class="period-label" rowspan="4">上午</td>
-                    {% elif row_idx == 4 %}
-                    <td class="period-label" rowspan="4">下午</td>
-                    {% elif row_idx == 8 %}
-                    <td class="period-label" rowspan="2">晚上</td>
-                    {% endif %}
-                    {% for col_idx in range(days|length) %}
-                        <td onclick="editCell(this)"
-                            data-row="{{ row_idx }}"
-                            data-col="{{ col_idx }}"
-                            data-day="{{ days[col_idx] }}"
-                            data-time="{{ time_slots[row_idx] }}"
-                            style="cursor: pointer;"></td>
-                    {% endfor %}
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- 多个课程表容器 -->
+    <div id="classroomContainer">
+        <!-- 课程表将由JavaScript动态生成 -->
     </div>
 
     <script>
+        // 校区和对应的教室配置
+        const campusClassrooms = {
+            'wendefu': ['a', 'b', 'c', 'd'],  // 文德福4个教室
+            'cuihai': ['a', 'b'],             // 翠海2个教室
+            'weipeng': ['a', 'b', 'c', 'd', 'e']  // 玮鹏5个教室
+        };
+
+        // 时间段配置
+        const timeSlots = [
+            "8:00-9:00", "9:00-10:00", "10:00-11:00", "11:00-12:00",
+            "14:00-15:00", "15:00-16:00", "16:00-17:00", "17:00-18:00",
+            "19:00-20:00", "20:00-21:00"
+        ];
+
         // ========== 月份选择控件 ===========
         const currentMonth = "{{ current_month }}";
         const currentCampus = "{{ current_campus }}";
@@ -211,45 +196,32 @@
             const newUrl = `?month=${y}-${m}&campus=${campus}`;
             window.history.pushState({}, '', newUrl);
             
-            // 更新校区标题
-            updateCampusTitle(campus);
-            
             // 更新日期范围显示
             updateDateRange();
             
-            // 重新加载当前校区的数据
-            loadCampusData(campus);
+            // 重新加载当前校区的所有课程表
+            loadAllClassrooms(campus);
         };
-
-        // 更新校区标题
-        function updateCampusTitle(campus) {
-            const campusTitle = document.getElementById('campusTitle');
-            const campusNames = {
-                'wendefu': '文德福',
-                'cuihai': '翠海',
-                'weipeng': '玮鹏'
-            };
-            campusTitle.textContent = campusNames[campus] || '文德福';
-        }
 
         // 页面加载时加载当前校区的数据
         document.addEventListener('DOMContentLoaded', function() {
-            // 延迟加载，确保页面完全加载后再加载数据
             setTimeout(function() {
-                loadCampusData(campusSelect.value);
+                loadAllClassrooms(campusSelect.value);
                 updateDateRange();
             }, 100);
         });
 
-        // 加载指定校区的数据
-        function loadCampusData(campus) {
+        // 加载指定校区的所有教室数据
+        function loadAllClassrooms(campus) {
             const month = yearSelect.value + '-' + monthSelect.value;
             fetch(`/campus_schedule_data?month=${month}&campus=${campus}`)
                 .then(response => response.json())
                 .then(data => {
+                    console.log('Received data:', data); // 调试用
                     if (data.success) {
-                        updateTableHeader(data.days);
-                        updateCampusTable(data.schedule);
+                        generateClassroomTables(data.all_schedules, data.classrooms, data.days);
+                    } else {
+                        console.error('Failed to load data:', data.message);
                     }
                 })
                 .catch(error => {
@@ -257,58 +229,113 @@
                 });
         }
 
-        // 更新指定校区的表格
-        function updateCampusTable(scheduleData) {
-            const table = document.getElementById('campus-table');
-            if (!table) return;
+        // 生成所有教室的课程表
+        function generateClassroomTables(allSchedules, classrooms, days) {
+            const container = document.getElementById('classroomContainer');
+            container.innerHTML = '';
 
-            const tbody = table.querySelector('tbody');
-            const rows = tbody.querySelectorAll('tr');
-            
-            for (let rowIdx = 0; rowIdx < rows.length; rowIdx++) {
-                const cells = rows[rowIdx].querySelectorAll('td');
-                // 跳过第一个td（时段列），从第二个td开始更新课程数据
-                for (let colIdx = 0; colIdx < scheduleData[0].length; colIdx++) {
-                    const cell = cells[colIdx + 1]; // +1 是因为要跳过时段列
-                    if (!cell) continue;
-                    const subject = scheduleData[rowIdx] && scheduleData[rowIdx][colIdx];
-                    // 清除原有的class
-                    cell.className = cell.className.replace(/subject-\w+/g, '');
-                    if (subject) {
-                        let subjectClass = '';
-                        if (subject === '化学') subjectClass = 'subject-chemistry';
-                        else if (subject === '数学') subjectClass = 'subject-math';
-                        else if (subject === '物理') subjectClass = 'subject-physics';
-                        else if (subject === '语文') subjectClass = 'subject-chinese';
-                        else if (subject === '英语') subjectClass = 'subject-english';
-                        else if (subject === '政治') subjectClass = 'subject-politics';
-                        else if (subject === '历史') subjectClass = 'subject-history';
-                        else if (subject === '地理') subjectClass = 'subject-geography';
-                        if (subjectClass) cell.classList.add(subjectClass);
-                        cell.textContent = subject;
-                    } else {
-                        cell.textContent = '';
+            if (!allSchedules || !classrooms || !days) {
+                console.error('Missing required data:', { allSchedules, classrooms, days });
+                return;
+            }
+
+            classrooms.forEach(classroom => {
+                // 创建教室标题
+                const title = document.createElement('div');
+                title.className = 'classroom-title';
+                title.textContent = `教室${classroom.toUpperCase()}`;
+                container.appendChild(title);
+
+                // 创建课程表
+                const table = document.createElement('table');
+                table.className = 'schedule-table';
+                table.id = `classroom-${classroom}-table`;
+
+                // 创建表头
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                
+                // 时间/日期列
+                const timeHeader = document.createElement('th');
+                timeHeader.className = 'time-label';
+                timeHeader.textContent = '时间/日期';
+                headerRow.appendChild(timeHeader);
+                
+                // 时段列
+                const periodHeader = document.createElement('th');
+                periodHeader.className = 'period-label';
+                periodHeader.textContent = '时段';
+                headerRow.appendChild(periodHeader);
+                
+                // 日期列
+                days.forEach(day => {
+                    const dayHeader = document.createElement('th');
+                    dayHeader.textContent = day;
+                    headerRow.appendChild(dayHeader);
+                });
+                
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                // 创建表体
+                const tbody = document.createElement('tbody');
+                
+                for (let rowIdx = 0; rowIdx < timeSlots.length; rowIdx++) {
+                    const row = document.createElement('tr');
+                    
+                    // 时间列
+                    const timeCell = document.createElement('th');
+                    timeCell.className = 'time-label';
+                    timeCell.textContent = timeSlots[rowIdx];
+                    row.appendChild(timeCell);
+                    
+                    // 时段列
+                    if (rowIdx === 0) {
+                        const periodCell = document.createElement('td');
+                        periodCell.className = 'period-label';
+                        periodCell.textContent = '上午';
+                        periodCell.rowSpan = 4;
+                        row.appendChild(periodCell);
+                    } else if (rowIdx === 4) {
+                        const periodCell = document.createElement('td');
+                        periodCell.className = 'period-label';
+                        periodCell.textContent = '下午';
+                        periodCell.rowSpan = 4;
+                        row.appendChild(periodCell);
+                    } else if (rowIdx === 8) {
+                        const periodCell = document.createElement('td');
+                        periodCell.className = 'period-label';
+                        periodCell.textContent = '晚上';
+                        periodCell.rowSpan = 2;
+                        row.appendChild(periodCell);
                     }
+                    
+                    // 日期列
+                    for (let colIdx = 0; colIdx < days.length; colIdx++) {
+                        const cell = document.createElement('td');
+                        cell.style.cursor = 'pointer';
+                        cell.setAttribute('data-row', rowIdx);
+                        cell.setAttribute('data-col', colIdx);
+                        cell.setAttribute('data-day', days[colIdx]);
+                        cell.setAttribute('data-time', timeSlots[rowIdx]);
+                        cell.setAttribute('data-classroom', classroom);
+                        cell.onclick = function() { editCell(this); };
+                        
+                        // 填充数据
+                        const scheduleData = allSchedules[classroom];
+                        if (scheduleData && scheduleData[rowIdx] && scheduleData[rowIdx][colIdx]) {
+                            const subject = scheduleData[rowIdx][colIdx];
+                            updateCellDisplay(cell, subject);
+                        }
+                        
+                        row.appendChild(cell);
+                    }
+                    
+                    tbody.appendChild(row);
                 }
-            }
-        }
-
-        // 动态更新表头
-        function updateTableHeader(days) {
-            const table = document.getElementById('campus-table');
-            if (!table) return;
-            const thead = table.querySelector('thead');
-            if (!thead) return;
-            const headerRow = thead.querySelector('tr');
-            // 保留前两个th（时间/日期和时段），其余全部移除
-            while (headerRow.children.length > 2) {
-                headerRow.removeChild(headerRow.lastChild);
-            }
-            // 添加新的日期th
-            days.forEach(day => {
-                const th = document.createElement('th');
-                th.textContent = day;
-                headerRow.appendChild(th);
+                
+                table.appendChild(tbody);
+                container.appendChild(table);
             });
         }
 
@@ -328,13 +355,15 @@
             return lastDay.getDate();
         }
 
-        // ========== 编辑单元格时带上month和campus ==========
+        // 编辑单元格
         function editCell(cell) {
             const row = parseInt(cell.getAttribute('data-row'));
             const col = parseInt(cell.getAttribute('data-col'));
             const day = cell.getAttribute('data-day');
             const time = cell.getAttribute('data-time');
+            const classroom = cell.getAttribute('data-classroom');
             const currentText = cell.textContent.trim();
+            
             const input = document.createElement('input');
             input.type = 'text';
             input.value = currentText;
@@ -344,15 +373,17 @@
             input.style.textAlign = 'center';
             input.style.fontSize = 'inherit';
             input.style.fontWeight = 'inherit';
+            
             const originalContent = cell.innerHTML;
             cell.innerHTML = '';
             cell.appendChild(input);
             input.focus();
             input.select();
+            
             function saveCell() {
                 const newValue = input.value.trim();
-                // 取当前month
                 const month = yearSelect.value + '-' + monthSelect.value;
+                
                 fetch('/campus_schedule', {
                     method: 'POST',
                     headers: {
@@ -360,7 +391,8 @@
                     },
                     body: JSON.stringify({
                         month: month,
-                        campus: campusSelect.value, // 使用campusSelect的值
+                        campus: campusSelect.value,
+                        classroom: classroom,
                         day_index: col,
                         time_slot_index: row,
                         subject: newValue,
@@ -372,8 +404,6 @@
                 .then(data => {
                     if (data.success) {
                         updateCellDisplay(cell, newValue);
-                        // 重新加载对应校区的数据
-                        loadCampusData(campusSelect.value);
                     } else {
                         alert('保存失败: ' + (data.message || '未知错误'));
                         cell.innerHTML = originalContent;
@@ -385,12 +415,14 @@
                     cell.innerHTML = originalContent;
                 });
             }
+            
             input.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
                     saveCell();
                 }
             });
+            
             input.addEventListener('blur', function() {
                 saveCell();
             });
