@@ -369,25 +369,15 @@
                             studentSelect.appendChild(option);
                         });
                         
-                        // 处理默认选择逻辑
+                        // 如果URL中有student参数，设置选中状态
                         const urlParams = new URLSearchParams(window.location.search);
                         const selectedStudent = urlParams.get('student');
-                        
                         if (selectedStudent && data.schedules_list.includes(selectedStudent)) {
-                            // 如果URL中有有效的student参数，使用它
                             studentSelect.value = selectedStudent;
-                        } else if (data.schedules_list.length > 0) {
-                            // 如果没有URL参数或参数无效，自动选择第一个学生
-                            studentSelect.value = data.schedules_list[0];
                         }
                         
                         // 加载课表数据
                         loadScheduleData();
-                        
-                        // 更新URL以反映当前选择
-                        if (studentSelect.value) {
-                            updateURL();
-                        }
                     }
                 })
                 .catch(error => {
@@ -485,14 +475,9 @@
                 const selectedStudent = studentSelect.value;
                 if (selectedStudent && schedulesList.includes(selectedStudent)) {
                     displayList = [selectedStudent];
-                } else if (schedulesList.length > 0) {
-                    // 如果没有选择学生但有学生列表，显示第一个学生
-                    displayList = [schedulesList[0]];
-                    // 同时更新选择框
-                    studentSelect.value = schedulesList[0];
                 } else {
-                    // 如果没有学生数据，显示提示
-                    container.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">暂无学生课程表数据</div>';
+                    // 如果没有选择学生或选择的学生不存在，显示提示
+                    container.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">请选择要查看的学生课程表</div>';
                     return;
                 }
             }
@@ -598,7 +583,7 @@
                             cell.setAttribute('data-classroom', scheduleName);
                             // 为教室课表添加只读样式
                             cell.classList.add('classroom-readonly');
-                        } else {
+                    } else {
                             cell.setAttribute('data-student', scheduleName);
                         }
                         
