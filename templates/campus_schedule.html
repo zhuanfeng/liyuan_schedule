@@ -133,6 +133,25 @@
             vertical-align: middle;
             text-align: center;
         }
+        /* 教室课表只读样式 */
+        .classroom-readonly {
+            cursor: default !important;
+            position: relative;
+        }
+        .classroom-readonly:hover::after {
+            content: "教室课表只读，请在学生课表中编辑";
+            position: absolute;
+            top: -30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1000;
+        }
         .type-switch {
             text-align: center;
             margin-bottom: 20px;
@@ -465,6 +484,8 @@
                         
                         if (type === 'classroom') {
                             cell.setAttribute('data-classroom', scheduleName);
+                            // 为教室课表添加只读样式
+                            cell.classList.add('classroom-readonly');
                         } else {
                             cell.setAttribute('data-student', scheduleName);
                         }
@@ -535,6 +556,11 @@
 
         // 编辑单元格
         function editCell(cell) {
+            // 如果是教室课表，不允许编辑（只读）
+            if (currentScheduleType === 'classroom') {
+                return;
+            }
+            
             const row = parseInt(cell.getAttribute('data-row'));
             const col = parseInt(cell.getAttribute('data-col'));
             const day = cell.getAttribute('data-day');
