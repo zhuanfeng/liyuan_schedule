@@ -405,6 +405,11 @@
                         const selectedStudent = urlParams.get('student');
                         if (selectedStudent && data.schedules_list.includes(selectedStudent)) {
                             studentSelect.value = selectedStudent;
+                        } else if (data.schedules_list.length > 0) {
+                            // 如果没有URL参数，默认选择第一个学生
+                            studentSelect.value = data.schedules_list[0];
+                            // 更新URL以反映默认选择
+                            updateURL();
                         }
                         
                         // 加载课表数据
@@ -507,6 +512,15 @@
             setTimeout(function() {
                 if (currentScheduleType === 'student') {
                     loadStudentList(); // 学生模式下先加载学生列表
+                    // 如果没有URL student参数，设置默认选择第一个学生
+                    if (!urlStudent) {
+                        setTimeout(() => {
+                            if (!studentSelect.value && studentSelect.options.length > 1) {
+                                studentSelect.value = studentSelect.options[1].value; // 跳过第一个"请选择学生"选项
+                                updateURL();
+                            }
+                        }, 200);
+                    }
                 } else if (currentScheduleType === 'classroom') {
                     loadClassroomList(); // 教室模式下先加载教室列表
                     // 如果没有URL classroom参数，设置默认选择教室a
