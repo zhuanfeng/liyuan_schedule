@@ -821,6 +821,15 @@ def campus_schedule():
                                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                             """
                             cursor.execute(insert_classroom_query, (month, campus, assigned_classroom, day_index, time_slot_index, day_label, time_slot, subject))
+                        else:
+                            # 如果没有找到可用教室，回滚事务并返回错误
+                            connection.rollback()
+                            cursor.close()
+                            connection.close()
+                            return jsonify({
+                                "success": False, 
+                                "message": f"无法为该课程分配教室：{day_label} {time_slot} 时段所有教室都已被占用，请选择其他时间段。"
+                            }), 400
                 else:
                     # 删除学生课程
                     query = "DELETE FROM student_schedule WHERE month = %s AND campus = %s AND student_name = %s AND day_index = %s AND time_slot_index = %s"
