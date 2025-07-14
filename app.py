@@ -359,8 +359,8 @@ def schedule_for_admin():
                              selected_year=today.year,
                              selected_month=today.month,
                              selected_week=None,
-                             week_offset=current_week_offset,
-                             all_weeks_schedule={})
+                             week_offset=current_week_offset,  # 传递周偏移量到模板
+                             all_weeks_schedule={})  # 添加空的all_weeks_schedule
 
 @app.route('/schedule', methods=['GET', 'POST'])
 def update_schedule():
@@ -767,8 +767,14 @@ def campus_schedule():
                     cursor.execute(query, (month, campus, classroom, day_index, time_slot_index))
             else:  # student
                 student_name = data.get('student_name')
+                
+                # 先检查是否已经存在这个学生的课程
+                check_query = "SELECT subject FROM student_schedule WHERE month = %s AND campus = %s AND student_name = %s AND day_index = %s AND time_slot_index = %s"
+                cursor.execute(check_query, (month, campus, student_name, day_index, time_slot_index))
+                existing_course = cursor.fetchone()
+                
                 if subject and subject.strip():
-                    # 插入或更新课程
+                    # 插入或更新学生课程
                     query = """
                         INSERT INTO student_schedule (month, campus, student_name, day_index, time_slot_index, day_label, time_slot, subject)
                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
@@ -779,10 +785,57 @@ def campus_schedule():
                         updated_at = CURRENT_TIMESTAMP
                     """
                     cursor.execute(query, (month, campus, student_name, day_index, time_slot_index, day_label, time_slot, subject, subject, day_label, time_slot))
+                    
+                    # 如果是新增课程（而不是更新），自动分配教室
+                    if not existing_course:
+                        # 定义校区对应的教室列表
+                        campus_classrooms = {
+                            'wendefu': ['a', 'b', 'c', 'd'],  # 文德福4个教室
+                            'cuihai': ['a', 'b'],             # 翠海2个教室
+                            'weipeng': ['a', 'b', 'c', 'd', 'e']  # 玮鹏5个教室
+                        }
+                        
+                        classrooms = campus_classrooms.get(campus, ['a'])
+                        assigned_classroom = None
+                        
+                        # 按a,b,c...顺序查找可用教室
+                        for classroom in classrooms:
+                            # 检查该教室在同一时间是否已被占用
+                            check_classroom_query = """
+                                SELECT subject FROM campus_schedule 
+                                WHERE month = %s AND campus = %s AND classroom = %s 
+                                AND day_index = %s AND time_slot_index = %s
+                            """
+                            cursor.execute(check_classroom_query, (month, campus, classroom, day_index, time_slot_index))
+                            existing_classroom_course = cursor.fetchone()
+                            
+                            if not existing_classroom_course:
+                                # 找到可用教室，分配给该课程
+                                assigned_classroom = classroom
+                                break
+                        
+                        # 如果找到可用教室，在教室课表中添加该课程
+                        if assigned_classroom:
+                            insert_classroom_query = """
+                                INSERT INTO campus_schedule (month, campus, classroom, day_index, time_slot_index, day_label, time_slot, subject)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            """
+                            cursor.execute(insert_classroom_query, (month, campus, assigned_classroom, day_index, time_slot_index, day_label, time_slot, subject))
                 else:
-                    # 删除课程
+                    # 删除学生课程
                     query = "DELETE FROM student_schedule WHERE month = %s AND campus = %s AND student_name = %s AND day_index = %s AND time_slot_index = %s"
                     cursor.execute(query, (month, campus, student_name, day_index, time_slot_index))
+                    
+                    # 如果删除的是学生课程，也需要从教室课表中删除对应的课程
+                    if existing_course:
+                        old_subject = existing_course[0]
+                        # 查找该课程在教室课表中的位置并删除
+                        delete_classroom_query = """
+                            DELETE FROM campus_schedule 
+                            WHERE month = %s AND campus = %s AND day_index = %s AND time_slot_index = %s AND subject = %s
+                            LIMIT 1
+                        """
+                        cursor.execute(delete_classroom_query, (month, campus, day_index, time_slot_index, old_subject))
             
             connection.commit()
             return jsonify({"success": True})
