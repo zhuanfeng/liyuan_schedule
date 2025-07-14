@@ -706,6 +706,11 @@ def init_db():
                 pass
             cursor.execute("CREATE UNIQUE INDEX unique_schedule ON campus_schedule (month, campus, classroom, day_index, time_slot_index)")
         
+        # 检查是否需要添加student_name字段
+        cursor.execute("SHOW COLUMNS FROM campus_schedule LIKE 'student_name'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE campus_schedule ADD COLUMN student_name VARCHAR(50) DEFAULT NULL")
+        
         connection.commit()
     except Exception as e:
         print(f"初始化数据库时出错: {str(e)}")
@@ -817,10 +822,10 @@ def campus_schedule():
                         # 如果找到可用教室，在教室课表中添加该课程
                         if assigned_classroom:
                             insert_classroom_query = """
-                                INSERT INTO campus_schedule (month, campus, classroom, day_index, time_slot_index, day_label, time_slot, subject)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                                INSERT INTO campus_schedule (month, campus, classroom, day_index, time_slot_index, day_label, time_slot, subject, student_name)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                             """
-                            cursor.execute(insert_classroom_query, (month, campus, assigned_classroom, day_index, time_slot_index, day_label, time_slot, subject))
+                            cursor.execute(insert_classroom_query, (month, campus, assigned_classroom, day_index, time_slot_index, day_label, time_slot, subject, student_name))
                         else:
                             # 如果没有找到可用教室，回滚事务并返回错误
                             connection.rollback()
@@ -838,13 +843,13 @@ def campus_schedule():
                     # 如果删除的是学生课程，也需要从教室课表中删除对应的课程
                     if existing_course:
                         old_subject = existing_course[0]
-                        # 查找该课程在教室课表中的位置并删除
+                        # 查找该课程在教室课表中的位置并删除（匹配学生姓名）
                         delete_classroom_query = """
                             DELETE FROM campus_schedule 
-                            WHERE month = %s AND campus = %s AND day_index = %s AND time_slot_index = %s AND subject = %s
+                            WHERE month = %s AND campus = %s AND day_index = %s AND time_slot_index = %s AND subject = %s AND student_name = %s
                             LIMIT 1
                         """
-                        cursor.execute(delete_classroom_query, (month, campus, day_index, time_slot_index, old_subject))
+                        cursor.execute(delete_classroom_query, (month, campus, day_index, time_slot_index, old_subject, student_name))
             
             connection.commit()
             return jsonify({"success": True})
@@ -1057,7 +1062,7 @@ def campus_schedule_data():
         schedules_list = classrooms
         
         for classroom_name in classrooms:
-            query = "SELECT day_index, time_slot_index, subject FROM campus_schedule WHERE month = %s AND campus = %s AND classroom = %s"
+            query = "SELECT day_index, time_slot_index, subject, student_name FROM campus_schedule WHERE month = %s AND campus = %s AND classroom = %s"
             cursor.execute(query, (month, campus, classroom_name))
             db_schedule = cursor.fetchall()
             
@@ -1069,8 +1074,13 @@ def campus_schedule_data():
                 day_idx = entry['day_index']
                 time_idx = entry['time_slot_index']
                 subject = entry['subject']
+                student_name = entry['student_name']
                 if 0 <= time_idx < len(time_slots) and 0 <= day_idx < len(days):
-                    schedule[time_idx][day_idx] = subject
+                    # 教室课表显示格式：科目+学生姓名
+                    display_text = f"{subject}"
+                    if student_name:
+                        display_text += f"\n{student_name}"
+                    schedule[time_idx][day_idx] = display_text
             
             all_schedules[classroom_name] = schedule
     else:  # student
