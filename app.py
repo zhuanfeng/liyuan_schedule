@@ -1000,6 +1000,8 @@ def campus_schedule_data():
     month = request.args.get('month')
     campus = request.args.get('campus', 'wendefu')
     schedule_type = request.args.get('type', 'classroom')
+    selected_student = request.args.get('student')
+    selected_classroom = request.args.get('classroom')
     
     if not month:
         today = datetime.date.today()
@@ -1061,6 +1063,10 @@ def campus_schedule_data():
         classrooms = campus_classrooms.get(campus, ['a'])
         schedules_list = classrooms
         
+        # 如果指定了特定教室，只处理该教室
+        if selected_classroom and selected_classroom in classrooms:
+            classrooms = [selected_classroom]
+        
         for classroom_name in classrooms:
             query = "SELECT day_index, time_slot_index, subject, student_name FROM campus_schedule WHERE month = %s AND campus = %s AND classroom = %s"
             cursor.execute(query, (month, campus, classroom_name))
@@ -1090,7 +1096,13 @@ def campus_schedule_data():
         student_names = cursor.fetchall()
         schedules_list = [item['student_name'] for item in student_names]
         
-        for student_name in schedules_list:
+        # 如果指定了特定学生，只处理该学生
+        if selected_student and selected_student in schedules_list:
+            student_list_to_process = [selected_student]
+        else:
+            student_list_to_process = schedules_list
+        
+        for student_name in student_list_to_process:
             query = "SELECT day_index, time_slot_index, subject FROM student_schedule WHERE month = %s AND campus = %s AND student_name = %s"
             cursor.execute(query, (month, campus, student_name))
             db_schedule = cursor.fetchall()
