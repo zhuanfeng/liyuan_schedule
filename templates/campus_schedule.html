@@ -225,6 +225,24 @@
         .type-switch button:hover {
             background: #138496;
         }
+        .admin-back-btn {
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin: 0 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            text-decoration: none;
+            display: inline-block;
+            transition: background-color 0.3s;
+        }
+        .admin-back-btn:hover {
+            background: #138496;
+            color: white;
+            text-decoration: none;
+        }
         .add-schedule-btn {
             background: #17a2b8;
             color: white;
@@ -275,6 +293,7 @@
     <div class="type-switch">
         <button id="classroomBtn">教室课表</button>
         <button id="studentBtn">学生课表</button>
+        <a href="/admin" class="admin-back-btn">返回管理员页面</a>
     </div>
 
     <!-- 新增学生课表按钮 -->
