@@ -8,14 +8,13 @@
         body {
             background: #f8f9fa;
             font-family: '微软雅黑', Arial, sans-serif;
-            min-width: 1200px;
         }
         .main-title {
             text-align: center;
-            font-size: 2.5rem;
+            font-size: 2rem;
             font-weight: bold;
             color: #0c5460;
-            margin-top: 30px;
+            margin-top: 20px;
             letter-spacing: 2px;
         }
         .date-range {
@@ -26,10 +25,10 @@
         }
         .classroom-title {
             text-align: center;
-            font-size: 1.8rem;
+            font-size: 1.4rem;
             font-weight: bold;
             color: #0c5460;
-            margin: 30px 0 20px 0;
+            margin: 20px 0 15px 0;
             letter-spacing: 1px;
             position: relative;
         }
@@ -49,20 +48,18 @@
         .delete-btn:hover {
             background: #138496;
         }
-        /* 表格滚动容器 */
+        /* 表格容器 */
         .table-scroll-container {
             width: 100%;
-            overflow-x: auto;
-            margin: 0 auto 40px auto;
+            margin: 0 auto 25px auto;
             background: #fff;
-            border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
         
         .schedule-table {
             border-collapse: collapse;
             width: 100%;
-            min-width: 1200px;
             position: relative;
             table-layout: fixed;
         }
@@ -71,11 +68,12 @@
         .schedule-table th, .schedule-table td {
             border: 1px solid #e0e0e0;
             text-align: center;
-            padding: 8px 6px;
-            min-width: 70px;
-            font-size: 1rem;
+            padding: 4px 2px;
+            font-size: 0.75rem;
             white-space: pre-line;
             vertical-align: middle;
+            height: 35px;
+            line-height: 1.2;
         }
         .schedule-table th {
             background: #d1ecf1;
@@ -89,41 +87,49 @@
             background: #ffd6af !important;
             color: #333;
             font-weight: bold;
+            font-size: 0.7rem;
         }
         .schedule-table .subject-math {
             background: #c7d8f4 !important;
             color: #333;
             font-weight: bold;
+            font-size: 0.7rem;
         }
         .schedule-table .subject-physics {
             background: #ffb3b3 !important;
             color: #333;
             font-weight: bold;
+            font-size: 0.7rem;
         }
         .schedule-table .subject-chinese {
             background: #ffe4e1 !important;
             color: #333;
             font-weight: bold;
+            font-size: 0.7rem;
         }
         .schedule-table .subject-english {
             background: #d4ffd4 !important;
             color: #333;
             font-weight: bold;
+            font-size: 0.7rem;
         }
         .schedule-table .subject-politics {
             background: #e6d3ff !important;
             color: #333;
             font-weight: bold;
+            font-size: 0.7rem;
         }
         .schedule-table .subject-history {
             background: #fff8dc !important;
             color: #333;
             font-weight: bold;
+            font-size: 0.7rem;
         }
         .schedule-table .subject-geography {
             background: #b3e5fc !important;
             color: #333;
             font-weight: bold;
+            font-size: 0.7rem;
         }
         .rest-cell {
             background: #f8f8f8;
@@ -134,25 +140,19 @@
             background: #d1ecf1;
             color: #0c5460;
             font-weight: bold;
-            width: 90px;
-            min-width: 90px;
-            max-width: 90px;
-            position: sticky;
-            left: 0;
-            z-index: 10;
+            width: 80px;
+            font-size: 0.7rem;
+            padding: 2px 1px;
         }
         .period-label {
             background: #d1ecf1 !important;
             color: #0c5460 !important;
             font-weight: bold;
-            width: 60px;
-            min-width: 60px;
-            max-width: 60px;
+            width: 50px;
             vertical-align: middle;
             text-align: center;
-            position: sticky;
-            left: 90px;
-            z-index: 10;
+            font-size: 0.7rem;
+            padding: 2px 1px;
         }
         /* 教室课表只读样式 */
         .classroom-readonly {
@@ -239,11 +239,7 @@
         .add-schedule-btn:hover {
             background: #138496;
         }
-        @media (max-width: 1200px) {
-            .schedule-table {
-                min-width: 900px;
-            }
-        }
+
     </style>
 </head>
 <body>
