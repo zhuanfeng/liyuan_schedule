@@ -6,7 +6,7 @@
     <title>{{ title }}</title>
     <style>
         body {
-            background: #f8dbe2;
+            background: #f8f9fa;
             font-family: '微软雅黑', Arial, sans-serif;
             min-width: 1200px;
         }
@@ -14,21 +14,21 @@
             text-align: center;
             font-size: 2.5rem;
             font-weight: bold;
-            color: #ff6f91;
+            color: #0c5460;
             margin-top: 30px;
             letter-spacing: 2px;
         }
         .date-range {
             text-align: center;
             font-size: 1.3rem;
-            color: #ff6f91;
+            color: #0c5460;
             margin-bottom: 20px;
         }
         .classroom-title {
             text-align: center;
             font-size: 1.8rem;
             font-weight: bold;
-            color: #ff6f91;
+            color: #0c5460;
             margin: 30px 0 20px 0;
             letter-spacing: 1px;
             position: relative;
@@ -38,7 +38,7 @@
             right: 20px;
             top: 50%;
             transform: translateY(-50%);
-            background: #ff6f91;
+            background: #17a2b8;
             color: white;
             border: none;
             padding: 5px 10px;
@@ -47,7 +47,7 @@
             font-size: 0.9rem;
         }
         .delete-btn:hover {
-            background: #ff5577;
+            background: #138496;
         }
         .schedule-table {
             margin: 0 auto 40px auto;
@@ -69,8 +69,8 @@
             vertical-align: middle;
         }
         .schedule-table th {
-            background: #ffe3ec;
-            color: #ff6f91;
+            background: #d1ecf1;
+            color: #0c5460;
             font-weight: bold;
         }
         .schedule-table td {
@@ -122,14 +122,14 @@
             font-size: 1.1rem;
         }
         .time-label {
-            background: #ffe3ec;
-            color: #ff6f91;
+            background: #d1ecf1;
+            color: #0c5460;
             font-weight: bold;
             min-width: 90px;
         }
         .period-label {
-            background: #ffe3ec !important;
-            color: #ff6f91 !important;
+            background: #d1ecf1 !important;
+            color: #0c5460 !important;
             font-weight: bold;
             min-width: 60px;
             vertical-align: middle;
@@ -191,7 +191,7 @@
             margin-bottom: 20px;
         }
         .type-switch button {
-            background: #ff6f91;
+            background: #17a2b8;
             color: white;
             border: none;
             padding: 10px 20px;
@@ -201,13 +201,13 @@
             font-size: 1rem;
         }
         .type-switch button.active {
-            background: #ff5577;
+            background: #138496;
         }
         .type-switch button:hover {
-            background: #ff5577;
+            background: #138496;
         }
         .add-schedule-btn {
-            background: #28a745;
+            background: #17a2b8;
             color: white;
             border: none;
             padding: 10px 20px;
@@ -218,7 +218,7 @@
             display: block;
         }
         .add-schedule-btn:hover {
-            background: #218838;
+            background: #138496;
         }
         @media (max-width: 1200px) {
             .schedule-table {
@@ -232,23 +232,23 @@
     <div class="date-range">{{ date_range }}</div>
     <div style="text-align:center; margin-bottom: 18px;">
         <form id="monthForm" style="display:inline-block;">
-            <label style="font-weight:bold;color:#ff6f91;">选择校区：</label>
+            <label style="font-weight:bold;color:#0c5460;">选择校区：</label>
             <select id="campusSelect" name="campus" style="margin-right:10px;">
                 <option value="wendefu" {% if current_campus == 'wendefu' %}selected{% endif %}>文德福</option>
                 <option value="cuihai" {% if current_campus == 'cuihai' %}selected{% endif %}>翠海</option>
                 <option value="weipeng" {% if current_campus == 'weipeng' %}selected{% endif %}>玮鹏</option>
             </select>
-            <label style="font-weight:bold;color:#ff6f91;">选择月份：</label>
+            <label style="font-weight:bold;color:#0c5460;">选择月份：</label>
             <select id="yearSelect" name="year" style="margin-right:6px;"></select>
             <select id="monthSelect" name="month" style="margin-right:10px;"></select>
             <span id="studentSelectContainer" style="display:none;">
-                <label style="font-weight:bold;color:#ff6f91;">选择学生：</label>
+                <label style="font-weight:bold;color:#0c5460;">选择学生：</label>
                 <select id="studentSelect" name="student" style="margin-right:10px;">
                     <option value="">请选择学生</option>
                 </select>
             </span>
             <span id="classroomSelectContainer" style="display:none;">
-                <label style="font-weight:bold;color:#ff6f91;">选择教室：</label>
+                <label style="font-weight:bold;color:#0c5460;">选择教室：</label>
                 <select id="classroomSelect" name="classroom" style="margin-right:10px;">
                     <option value="">请选择教室</option>
                 </select>
