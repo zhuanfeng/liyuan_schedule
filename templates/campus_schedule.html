@@ -154,6 +154,38 @@
             white-space: nowrap;
             z-index: 1000;
         }
+        /* 新增：拖拽和选中样式 */
+        .cell-selected {
+            background-color: rgba(76, 175, 80, 0.3) !important;
+            border: 2px solid #4CAF50 !important;
+        }
+        .cell-drag-source {
+            border: 2px solid #2196F3 !important;
+            background-color: rgba(33, 150, 243, 0.2) !important;
+        }
+        .cell-drag-target {
+            border: 2px dashed #9C27B0 !important;
+            background-color: rgba(156, 39, 176, 0.1) !important;
+        }
+        .dragging-cursor {
+            cursor: copy !important;
+        }
+        .undo-hint {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 1000;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .undo-hint.show {
+            opacity: 1;
+        }
         .type-switch {
             text-align: center;
             margin-bottom: 20px;
@@ -240,6 +272,11 @@
         <!-- 课程表将由JavaScript动态生成 -->
     </div>
 
+    <!-- 撤回提示 -->
+    <div id="undoHint" class="undo-hint">
+        按 Ctrl+Z 可撤回操作
+    </div>
+
     <script>
         // 校区和对应的教室配置
         const campusClassrooms = {
@@ -270,6 +307,15 @@
         const studentSelect = document.getElementById('studentSelect');
         const classroomSelectContainer = document.getElementById('classroomSelectContainer');
         const classroomSelect = document.getElementById('classroomSelect');
+        
+        // ========== 拖拽和撤回相关变量 ===========
+        let operationHistory = []; // 操作历史栈
+        let currentHistoryIndex = -1; // 当前历史位置
+        let isDragging = false; // 是否正在拖拽
+        let dragStartCell = null; // 拖拽起始单元格
+        let draggedCells = []; // 拖拽经过的单元格
+        let selectedCell = null; // 当前选中的单元格
+        let lastClickTime = 0; // 上次点击时间，用于判断双击
         
         // 年份范围
         for(let y=2020; y<=2030; y++) {
@@ -312,6 +358,16 @@
         
         // 更新按钮状态
         function updateTypeButtons() {
+            // 切换课表类型时清除所有状态
+            clearDragState();
+            clearCellSelection();
+            
+            // 如果从学生课表切换到其他类型，重置历史记录
+            if (currentScheduleType !== 'student') {
+                operationHistory = [];
+                currentHistoryIndex = -1;
+            }
+            
             classroomBtn.classList.toggle('active', currentScheduleType === 'classroom');
             studentBtn.classList.toggle('active', currentScheduleType === 'student');
             addStudentBtn.style.display = currentScheduleType === 'student' ? 'block' : 'none';
@@ -499,6 +555,282 @@
             }
         };
 
+        // ========== 拖拽和撤回功能实现 ===========
+        
+        // 保存操作状态到历史栈
+        function saveStateForUndo() {
+            const currentState = getCurrentScheduleState();
+            if (currentState) {
+                // 删除当前位置之后的历史记录
+                operationHistory = operationHistory.slice(0, currentHistoryIndex + 1);
+                operationHistory.push(currentState);
+                currentHistoryIndex++;
+                
+                // 限制历史记录数量，避免内存过大
+                if (operationHistory.length > 20) {
+                    operationHistory = operationHistory.slice(-20);
+                    currentHistoryIndex = 19;
+                }
+                
+                showUndoHint();
+            }
+        }
+        
+        // 获取当前课表状态
+        function getCurrentScheduleState() {
+            if (currentScheduleType !== 'student' || !studentSelect.value) {
+                return null;
+            }
+            
+            const state = {
+                type: currentScheduleType,
+                student: studentSelect.value,
+                month: yearSelect.value + '-' + monthSelect.value,
+                campus: campusSelect.value,
+                cells: []
+            };
+            
+            const table = document.querySelector(`#schedule-${studentSelect.value}-table`);
+            if (table) {
+                const cells = table.querySelectorAll('td[data-student]');
+                cells.forEach(cell => {
+                    const row = parseInt(cell.getAttribute('data-row'));
+                    const col = parseInt(cell.getAttribute('data-col'));
+                    const content = cell.textContent.trim();
+                    state.cells.push({
+                        row: row,
+                        col: col,
+                        content: content
+                    });
+                });
+            }
+            
+            return state;
+        }
+        
+        // 恢复到指定状态
+        function restoreState(state) {
+            if (!state || state.type !== 'student') {
+                return;
+            }
+            
+            // 确保当前选择的学生和状态中的一致
+            if (studentSelect.value !== state.student) {
+                studentSelect.value = state.student;
+            }
+            
+            const table = document.querySelector(`#schedule-${state.student}-table`);
+            if (table) {
+                const cells = table.querySelectorAll('td[data-student]');
+                
+                // 先清空所有单元格
+                cells.forEach(cell => {
+                    updateCellDisplay(cell, '');
+                });
+                
+                // 恢复状态中的内容
+                state.cells.forEach(cellData => {
+                    const cell = table.querySelector(`td[data-row="${cellData.row}"][data-col="${cellData.col}"]`);
+                    if (cell) {
+                        updateCellDisplay(cell, cellData.content);
+                    }
+                });
+            }
+        }
+        
+        // 执行撤回操作
+        function performUndo() {
+            if (currentHistoryIndex > 0) {
+                currentHistoryIndex--;
+                const targetState = operationHistory[currentHistoryIndex];
+                restoreState(targetState);
+                
+                // 批量更新服务器
+                updateServerWithState(targetState);
+            }
+        }
+        
+        // 批量更新服务器状态
+        function updateServerWithState(state) {
+            if (!state || state.type !== 'student') {
+                return;
+            }
+            
+            const promises = [];
+            
+            state.cells.forEach(cellData => {
+                const requestData = {
+                    month: state.month,
+                    campus: state.campus,
+                    type: 'student',
+                    day_index: cellData.col,
+                    time_slot_index: cellData.row,
+                    subject: cellData.content,
+                    day_label: '', // 这些在服务器端会被重新计算
+                    time_slot: '',
+                    student_name: state.student
+                };
+                
+                promises.push(
+                    fetch('/campus_schedule', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestData)
+                    })
+                );
+            });
+            
+            // 等待所有请求完成
+            Promise.all(promises).then(responses => {
+                console.log('Undo operation completed');
+            }).catch(error => {
+                console.error('Error during undo:', error);
+            });
+        }
+        
+        // 显示撤回提示
+        function showUndoHint() {
+            const hint = document.getElementById('undoHint');
+            hint.classList.add('show');
+            setTimeout(() => {
+                hint.classList.remove('show');
+            }, 2000);
+        }
+        
+        // 清除单元格选中状态
+        function clearCellSelection() {
+            document.querySelectorAll('.cell-selected').forEach(cell => {
+                cell.classList.remove('cell-selected');
+            });
+            selectedCell = null;
+        }
+        
+        // 清除拖拽状态
+        function clearDragState() {
+            document.querySelectorAll('.cell-drag-source, .cell-drag-target').forEach(cell => {
+                cell.classList.remove('cell-drag-source', 'cell-drag-target');
+            });
+            document.body.classList.remove('dragging-cursor');
+            isDragging = false;
+            dragStartCell = null;
+            draggedCells = [];
+        }
+        
+        // 开始拖拽
+        function startDrag(cell) {
+            if (currentScheduleType !== 'student' || !cell.textContent.trim()) {
+                return false;
+            }
+            
+            // 保存当前状态用于撤回
+            saveStateForUndo();
+            
+            isDragging = true;
+            dragStartCell = cell;
+            draggedCells = [cell];
+            
+            cell.classList.add('cell-drag-source');
+            document.body.classList.add('dragging-cursor');
+            
+            return true;
+        }
+        
+        // 处理拖拽移动
+        function handleDragMove(cell) {
+            if (!isDragging || !dragStartCell) {
+                return;
+            }
+            
+            // 如果这个单元格还没有被标记为拖拽目标
+            if (!draggedCells.includes(cell)) {
+                draggedCells.push(cell);
+                cell.classList.add('cell-drag-target');
+            }
+        }
+        
+        // 结束拖拽
+        function endDrag() {
+            if (!isDragging || !dragStartCell || draggedCells.length <= 1) {
+                clearDragState();
+                return;
+            }
+            
+            const sourceContent = dragStartCell.textContent.trim();
+            const promises = [];
+            
+            // 复制内容到所有拖拽经过的单元格
+            draggedCells.forEach(cell => {
+                if (cell !== dragStartCell) {
+                    updateCellDisplay(cell, sourceContent);
+                    
+                    // 准备服务器更新请求
+                    const row = parseInt(cell.getAttribute('data-row'));
+                    const col = parseInt(cell.getAttribute('data-col'));
+                    const day = cell.getAttribute('data-day');
+                    const time = cell.getAttribute('data-time');
+                    const student = cell.getAttribute('data-student');
+                    
+                    const requestData = {
+                        month: yearSelect.value + '-' + monthSelect.value,
+                        campus: campusSelect.value,
+                        type: 'student',
+                        day_index: col,
+                        time_slot_index: row,
+                        subject: sourceContent,
+                        day_label: day,
+                        time_slot: time,
+                        student_name: student
+                    };
+                    
+                    promises.push(
+                        fetch('/campus_schedule', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(requestData)
+                        })
+                    );
+                }
+            });
+            
+            // 批量发送请求到服务器
+            Promise.all(promises).then(responses => {
+                console.log('Drag fill completed');
+            }).catch(error => {
+                console.error('Error during drag fill:', error);
+                // 如果出错，重新加载数据
+                loadScheduleData();
+            });
+            
+            clearDragState();
+        }
+        
+        // 键盘事件监听（Ctrl+Z撤回）
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'z' && currentScheduleType === 'student') {
+                e.preventDefault();
+                performUndo();
+            }
+        });
+        
+        // 全局鼠标事件监听
+        document.addEventListener('mouseup', function(e) {
+            if (isDragging) {
+                endDrag();
+            }
+        });
+        
+        // 全局点击事件监听（点击其他地方取消选中）
+        document.addEventListener('click', function(e) {
+            // 如果点击的不是单元格，清除选中状态
+            if (!e.target.closest('td[data-student], td[data-classroom]')) {
+                clearCellSelection();
+            }
+        });
+        
         // 页面加载时加载当前校区的数据
         document.addEventListener('DOMContentLoaded', function() {
             // 初始化按钮状态
@@ -541,6 +873,19 @@
 
         // 加载课表数据
         function loadScheduleData() {
+            // 清除拖拽和选中状态
+            clearDragState();
+            clearCellSelection();
+            
+            // 如果切换了学生或月份，重置历史记录
+            const currentState = getCurrentScheduleState();
+            if (currentState && (operationHistory.length === 0 || 
+                operationHistory[operationHistory.length - 1]?.student !== currentState.student ||
+                operationHistory[operationHistory.length - 1]?.month !== currentState.month)) {
+                operationHistory = [];
+                currentHistoryIndex = -1;
+            }
+            
             const month = yearSelect.value + '-' + monthSelect.value;
             const campus = campusSelect.value;
             const type = currentScheduleType;
@@ -704,7 +1049,16 @@
                             cell.setAttribute('data-student', scheduleName);
                         }
                         
-                        cell.onclick = function() { editCell(this); };
+                        // 新的事件处理：单击选中，双击编辑，支持拖拽
+                        cell.addEventListener('click', function(e) { 
+                            handleCellClick(this, e); 
+                        });
+                        cell.addEventListener('mousedown', function(e) { 
+                            handleCellMouseDown(this, e); 
+                        });
+                        cell.addEventListener('mouseenter', function(e) { 
+                            handleCellMouseEnter(this, e); 
+                        });
                         
                         // 填充数据
                         const scheduleData = allSchedules[scheduleName];
@@ -722,6 +1076,17 @@
                 table.appendChild(tbody);
                 container.appendChild(table);
             });
+            
+            // 如果是学生课表，保存初始状态到历史记录
+            if (type === 'student' && displayList.length > 0 && operationHistory.length === 0) {
+                setTimeout(() => {
+                    const initialState = getCurrentScheduleState();
+                    if (initialState) {
+                        operationHistory = [initialState];
+                        currentHistoryIndex = 0;
+                    }
+                }, 100);
+            }
         }
 
         // 删除学生课表
@@ -768,6 +1133,67 @@
             return lastDay.getDate();
         }
 
+        // ========== 新的单元格事件处理 ===========
+        
+        // 处理单元格点击事件（单击选中，双击编辑）
+        function handleCellClick(cell, e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // 如果是教室课表，不允许任何操作
+            if (currentScheduleType === 'classroom') {
+                return;
+            }
+            
+            const currentTime = new Date().getTime();
+            const isDoubleClick = (currentTime - lastClickTime) < 300;
+            lastClickTime = currentTime;
+            
+            if (isDoubleClick) {
+                // 双击编辑
+                editCell(cell);
+            } else {
+                // 单击选中
+                clearCellSelection();
+                cell.classList.add('cell-selected');
+                selectedCell = cell;
+            }
+        }
+        
+        // 处理鼠标按下事件（开始拖拽）
+        function handleCellMouseDown(cell, e) {
+            if (e.button !== 0) return; // 只处理左键
+            
+            // 如果是教室课表，不允许拖拽
+            if (currentScheduleType === 'classroom') {
+                return;
+            }
+            
+            // 清除之前的选中状态
+            clearCellSelection();
+            clearDragState();
+            
+            // 只有有内容的单元格才能开始拖拽
+            if (cell.textContent.trim()) {
+                const dragStarted = startDrag(cell);
+                if (dragStarted) {
+                    e.preventDefault(); // 防止默认的文本选择
+                }
+            }
+        }
+        
+        // 处理鼠标进入事件（拖拽过程中）
+        function handleCellMouseEnter(cell, e) {
+            // 如果是教室课表，不允许拖拽
+            if (currentScheduleType === 'classroom') {
+                return;
+            }
+            
+            if (isDragging) {
+                handleDragMove(cell);
+            }
+        }
+        
         // 编辑单元格
         function editCell(cell) {
             // 如果是教室课表，不允许编辑（只读）
@@ -803,6 +1229,11 @@
                 const newValue = input.value.trim();
                 const month = yearSelect.value + '-' + monthSelect.value;
                 
+                // 只有内容发生变化且为学生课表时才保存状态用于撤回
+                if (newValue !== currentText && currentScheduleType === 'student') {
+                    saveStateForUndo();
+                }
+                
                 const requestData = {
                     month: month,
                     campus: campusSelect.value,
@@ -831,6 +1262,8 @@
                 .then(data => {
                     if (data.success) {
                         updateCellDisplay(cell, newValue);
+                        // 编辑完成后清除选中状态
+                        clearCellSelection();
                     } else {
                         alert('保存失败: ' + (data.message || '未知错误'));
                         cell.innerHTML = originalContent;
