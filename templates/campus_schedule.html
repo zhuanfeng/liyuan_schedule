@@ -49,16 +49,25 @@
         .delete-btn:hover {
             background: #138496;
         }
-        .schedule-table {
+        /* 表格滚动容器 */
+        .table-scroll-container {
+            width: 100%;
+            overflow-x: auto;
             margin: 0 auto 40px auto;
             background: #fff;
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            border-collapse: separate;
-            border-spacing: 0;
-            width: 98vw;
-            min-width: 1200px;
         }
+        
+        .schedule-table {
+            border-collapse: collapse;
+            width: 100%;
+            min-width: 1200px;
+            position: relative;
+            table-layout: fixed;
+        }
+        
+
         .schedule-table th, .schedule-table td {
             border: 1px solid #e0e0e0;
             text-align: center;
@@ -125,15 +134,25 @@
             background: #d1ecf1;
             color: #0c5460;
             font-weight: bold;
+            width: 90px;
             min-width: 90px;
+            max-width: 90px;
+            position: sticky;
+            left: 0;
+            z-index: 10;
         }
         .period-label {
             background: #d1ecf1 !important;
             color: #0c5460 !important;
             font-weight: bold;
+            width: 60px;
             min-width: 60px;
+            max-width: 60px;
             vertical-align: middle;
             text-align: center;
+            position: sticky;
+            left: 90px;
+            z-index: 10;
         }
         /* 教室课表只读样式 */
         .classroom-readonly {
@@ -968,6 +987,10 @@
                 
                 container.appendChild(titleDiv);
 
+                // 创建表格滚动容器
+                const scrollContainer = document.createElement('div');
+                scrollContainer.className = 'table-scroll-container';
+
                 // 创建课程表
                 const table = document.createElement('table');
                 table.className = 'schedule-table';
@@ -1074,7 +1097,8 @@
                 }
                 
                 table.appendChild(tbody);
-                container.appendChild(table);
+                scrollContainer.appendChild(table);
+                container.appendChild(scrollContainer);
             });
             
             // 如果是学生课表，保存初始状态到历史记录
