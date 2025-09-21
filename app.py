@@ -783,6 +783,168 @@ def init_db():
 # 在应用启动时初始化数据库
 init_db()
 
+# ========== 课程表操作辅助函数 ===========
+
+def _handle_student_course_update(cursor, month, campus, student_name, day_index, time_slot_index, 
+                                 day_label, time_slot, subject, existing_course):
+    """处理学生课程的添加/更新操作"""
+    try:
+        # 更新学生课程表
+        query = """
+            INSERT INTO student_schedule (month, campus, student_name, day_index, time_slot_index, day_label, time_slot, subject)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE 
+            subject = %s,
+            day_label = %s,
+            time_slot = %s,
+            updated_at = CURRENT_TIMESTAMP
+        """
+        cursor.execute(query, (month, campus, student_name, day_index, time_slot_index, day_label, time_slot, subject, subject, day_label, time_slot))
+        
+        # 处理教室课表的同步
+        if existing_course:
+            # 如果是更新操作，先删除旧的教室课程记录
+            old_subject = existing_course[0]
+            delete_query = """
+                DELETE FROM campus_schedule 
+                WHERE month = %s AND campus = %s AND day_index = %s AND time_slot_index = %s 
+                AND subject = %s AND student_name = %s
+            """
+            cursor.execute(delete_query, (month, campus, day_index, time_slot_index, old_subject, student_name))
+        
+        # 为新课程分配教室
+        assigned_classroom = _find_available_classroom(cursor, month, campus, day_index, time_slot_index)
+        if not assigned_classroom:
+            return {
+                "success": False,
+                "message": f"无法为该课程分配教室：{day_label} {time_slot} 时段所有教室都已被占用，请选择其他时间段。"
+            }
+        
+        # 在教室课表中添加新课程
+        insert_classroom_query = """
+            INSERT INTO campus_schedule (month, campus, classroom, day_index, time_slot_index, day_label, time_slot, subject, student_name)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        cursor.execute(insert_classroom_query, (month, campus, assigned_classroom, day_index, time_slot_index, day_label, time_slot, subject, student_name))
+        
+        return {"success": True}
+        
+    except Exception as e:
+        return {"success": False, "message": f"处理学生课程更新时发生错误: {str(e)}"}
+
+def _handle_student_course_delete(cursor, month, campus, student_name, day_index, time_slot_index, existing_course):
+    """处理学生课程的删除操作"""
+    try:
+        # 删除学生课程
+        delete_student_query = """
+            DELETE FROM student_schedule 
+            WHERE month = %s AND campus = %s AND student_name = %s AND day_index = %s AND time_slot_index = %s
+        """
+        cursor.execute(delete_student_query, (month, campus, student_name, day_index, time_slot_index))
+        
+        # 如果存在对应的教室课程，也要删除
+        if existing_course:
+            old_subject = existing_course[0]
+            delete_classroom_query = """
+                DELETE FROM campus_schedule 
+                WHERE month = %s AND campus = %s AND day_index = %s AND time_slot_index = %s 
+                AND subject = %s AND student_name = %s
+            """
+            cursor.execute(delete_classroom_query, (month, campus, day_index, time_slot_index, old_subject, student_name))
+        
+        return {"success": True}
+        
+    except Exception as e:
+        return {"success": False, "message": f"处理学生课程删除时发生错误: {str(e)}"}
+
+def _find_available_classroom(cursor, month, campus, day_index, time_slot_index):
+    """查找可用教室"""
+    campus_classrooms = {
+        'wendefu': ['a', 'b', 'c', 'd'],
+        'cuihai': ['a', 'b'],
+        'weipeng': ['a', 'b', 'c', 'd', 'e']
+    }
+    
+    classrooms = campus_classrooms.get(campus, ['a'])
+    
+    for classroom in classrooms:
+        # 检查该教室在同一时间是否已被占用
+        check_query = """
+            SELECT COUNT(*) FROM campus_schedule 
+            WHERE month = %s AND campus = %s AND classroom = %s 
+            AND day_index = %s AND time_slot_index = %s
+        """
+        cursor.execute(check_query, (month, campus, classroom, day_index, time_slot_index))
+        count = cursor.fetchone()[0]
+        
+        if count == 0:
+            return classroom
+    
+    return None
+
+def _verify_data_consistency(cursor, month, campus, schedule_type, student_name=None):
+    """验证数据一致性"""
+    try:
+        if schedule_type == 'student' and student_name:
+            # 检查该学生的课程在两个表中是否一致
+            
+            # 获取学生课表中的课程
+            cursor.execute("""
+                SELECT day_index, time_slot_index, subject 
+                FROM student_schedule 
+                WHERE month = %s AND campus = %s AND student_name = %s 
+                AND subject IS NOT NULL AND subject != ''
+            """, (month, campus, student_name))
+            student_courses = cursor.fetchall()
+            
+            # 检查每个学生课程是否在教室课表中存在
+            for day_idx, time_idx, subject in student_courses:
+                cursor.execute("""
+                    SELECT COUNT(*) FROM campus_schedule 
+                    WHERE month = %s AND campus = %s AND day_index = %s AND time_slot_index = %s 
+                    AND subject = %s AND student_name = %s
+                """, (month, campus, day_idx, time_idx, subject, student_name))
+                
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    return {
+                        "success": False,
+                        "message": f"学生课程在教室课表中缺失: {student_name} - {subject} 在时间({day_idx}, {time_idx})"
+                    }
+                elif count > 1:
+                    return {
+                        "success": False,
+                        "message": f"学生课程在教室课表中有重复记录: {student_name} - {subject} 在时间({day_idx}, {time_idx})"
+                    }
+            
+            # 检查教室课表中该学生的课程是否都在学生课表中存在
+            cursor.execute("""
+                SELECT day_index, time_slot_index, subject 
+                FROM campus_schedule 
+                WHERE month = %s AND campus = %s AND student_name = %s 
+                AND subject IS NOT NULL AND subject != ''
+            """, (month, campus, student_name))
+            classroom_courses = cursor.fetchall()
+            
+            for day_idx, time_idx, subject in classroom_courses:
+                cursor.execute("""
+                    SELECT COUNT(*) FROM student_schedule 
+                    WHERE month = %s AND campus = %s AND student_name = %s 
+                    AND day_index = %s AND time_slot_index = %s AND subject = %s
+                """, (month, campus, student_name, day_idx, time_idx, subject))
+                
+                count = cursor.fetchone()[0]
+                if count == 0:
+                    return {
+                        "success": False,
+                        "message": f"教室课程在学生课表中缺失: {student_name} - {subject} 在时间({day_idx}, {time_idx})"
+                    }
+        
+        return {"success": True}
+        
+    except Exception as e:
+        return {"success": False, "message": f"数据一致性验证失败: {str(e)}"}
+
 @app.route('/campus_schedule', methods=['GET', 'POST'])
 def campus_schedule():
     # 检查用户是否已登录
@@ -842,6 +1004,9 @@ def campus_schedule():
         
         cursor = connection.cursor()
         try:
+            # 开始事务
+            connection.start_transaction()
+            
             if schedule_type == 'classroom':
                 classroom = data.get('classroom', 'a')
                 if subject and subject.strip():
@@ -869,81 +1034,38 @@ def campus_schedule():
                 existing_course = cursor.fetchone()
                 
                 if subject and subject.strip():
-                    # 插入或更新学生课程
-                    query = """
-                        INSERT INTO student_schedule (month, campus, student_name, day_index, time_slot_index, day_label, time_slot, subject)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                        ON DUPLICATE KEY UPDATE 
-                        subject = %s,
-                        day_label = %s,
-                        time_slot = %s,
-                        updated_at = CURRENT_TIMESTAMP
-                    """
-                    cursor.execute(query, (month, campus, student_name, day_index, time_slot_index, day_label, time_slot, subject, subject, day_label, time_slot))
-                    
-                    # 如果是新增课程（而不是更新），自动分配教室
-                    if not existing_course:
-                        # 定义校区对应的教室列表
-                        campus_classrooms = {
-                            'wendefu': ['a', 'b', 'c', 'd'],  # 文德福4个教室
-                            'cuihai': ['a', 'b'],             # 翠海2个教室
-                            'weipeng': ['a', 'b', 'c', 'd', 'e']  # 玮鹏5个教室
-                        }
-                        
-                        classrooms = campus_classrooms.get(campus, ['a'])
-                        assigned_classroom = None
-                        
-                        # 按a,b,c...顺序查找可用教室
-                        for classroom in classrooms:
-                            # 检查该教室在同一时间是否已被占用
-                            check_classroom_query = """
-                                SELECT subject FROM campus_schedule 
-                                WHERE month = %s AND campus = %s AND classroom = %s 
-                                AND day_index = %s AND time_slot_index = %s
-                            """
-                            cursor.execute(check_classroom_query, (month, campus, classroom, day_index, time_slot_index))
-                            existing_classroom_course = cursor.fetchone()
-                            
-                            if not existing_classroom_course:
-                                # 找到可用教室，分配给该课程
-                                assigned_classroom = classroom
-                                break
-                        
-                        # 如果找到可用教室，在教室课表中添加该课程
-                        if assigned_classroom:
-                            insert_classroom_query = """
-                                INSERT INTO campus_schedule (month, campus, classroom, day_index, time_slot_index, day_label, time_slot, subject, student_name)
-                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-                            """
-                            cursor.execute(insert_classroom_query, (month, campus, assigned_classroom, day_index, time_slot_index, day_label, time_slot, subject, student_name))
-                        else:
-                            # 如果没有找到可用教室，回滚事务并返回错误
-                            connection.rollback()
-                            cursor.close()
-                            connection.close()
-                            return jsonify({
-                                "success": False, 
-                                "message": f"无法为该课程分配教室：{day_label} {time_slot} 时段所有教室都已被占用，请选择其他时间段。"
-                            }), 400
+                    # 处理学生课程的添加/更新
+                    result = _handle_student_course_update(cursor, month, campus, student_name, day_index, time_slot_index, 
+                                                         day_label, time_slot, subject, existing_course)
+                    if not result['success']:
+                        connection.rollback()
+                        cursor.close()
+                        connection.close()
+                        return jsonify(result), 400
                 else:
-                    # 删除学生课程
-                    query = "DELETE FROM student_schedule WHERE month = %s AND campus = %s AND student_name = %s AND day_index = %s AND time_slot_index = %s"
-                    cursor.execute(query, (month, campus, student_name, day_index, time_slot_index))
-                    
-                    # 如果删除的是学生课程，也需要从教室课表中删除对应的课程
-                    if existing_course:
-                        old_subject = existing_course[0]
-                        # 查找该课程在教室课表中的位置并删除（匹配学生姓名）
-                        delete_classroom_query = """
-                            DELETE FROM campus_schedule 
-                            WHERE month = %s AND campus = %s AND day_index = %s AND time_slot_index = %s AND subject = %s AND student_name = %s
-                            LIMIT 1
-                        """
-                        cursor.execute(delete_classroom_query, (month, campus, day_index, time_slot_index, old_subject, student_name))
+                    # 处理学生课程的删除
+                    result = _handle_student_course_delete(cursor, month, campus, student_name, day_index, time_slot_index, existing_course)
+                    if not result['success']:
+                        connection.rollback()
+                        cursor.close()
+                        connection.close()
+                        return jsonify(result), 500
+            
+            # 验证数据一致性
+            consistency_check = _verify_data_consistency(cursor, month, campus, schedule_type, student_name if schedule_type == 'student' else None)
+            if not consistency_check['success']:
+                connection.rollback()
+                cursor.close()
+                connection.close()
+                return jsonify({
+                    "success": False,
+                    "message": f"操作导致数据不一致，已回滚: {consistency_check['message']}"
+                }), 500
             
             connection.commit()
             return jsonify({"success": True})
         except Exception as e:
+            connection.rollback()
             print(f"Error updating schedule: {str(e)}")
             return jsonify({"success": False, "message": str(e)}), 500
         finally:
