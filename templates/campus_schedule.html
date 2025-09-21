@@ -189,6 +189,53 @@
         .dragging-cursor {
             cursor: copy !important;
         }
+        /* 鼠标悬停高亮效果 */
+        .row-highlight {
+            background-color: rgba(33, 150, 243, 0.1) !important;
+            transition: background-color 0.1s ease;
+        }
+        .col-highlight {
+            background-color: rgba(33, 150, 243, 0.1) !important;
+            transition: background-color 0.1s ease;
+        }
+        .cell-highlight {
+            background-color: rgba(33, 150, 243, 0.2) !important;
+            border: 2px solid #2196F3 !important;
+            transition: all 0.1s ease;
+        }
+        /* 确保高亮效果覆盖科目颜色 */
+        .subject-chemistry.row-highlight,
+        .subject-chemistry.col-highlight {
+            background-color: rgba(255, 214, 175, 0.8) !important;
+        }
+        .subject-math.row-highlight,
+        .subject-math.col-highlight {
+            background-color: rgba(199, 216, 244, 0.8) !important;
+        }
+        .subject-physics.row-highlight,
+        .subject-physics.col-highlight {
+            background-color: rgba(255, 179, 179, 0.8) !important;
+        }
+        .subject-chinese.row-highlight,
+        .subject-chinese.col-highlight {
+            background-color: rgba(255, 228, 225, 0.8) !important;
+        }
+        .subject-english.row-highlight,
+        .subject-english.col-highlight {
+            background-color: rgba(212, 255, 212, 0.8) !important;
+        }
+        .subject-politics.row-highlight,
+        .subject-politics.col-highlight {
+            background-color: rgba(230, 211, 255, 0.8) !important;
+        }
+        .subject-history.row-highlight,
+        .subject-history.col-highlight {
+            background-color: rgba(255, 248, 220, 0.8) !important;
+        }
+        .subject-geography.row-highlight,
+        .subject-geography.col-highlight {
+            background-color: rgba(179, 229, 252, 0.8) !important;
+        }
         .undo-hint {
             position: fixed;
             top: 10px;
@@ -739,6 +786,8 @@
                 cell.classList.remove('cell-selected');
             });
             selectedCell = null;
+            // 同时清除高亮效果
+            clearHighlight();
         }
         
         // 清除拖拽状态
@@ -750,6 +799,8 @@
             isDragging = false;
             dragStartCell = null;
             draggedCells = [];
+            // 同时清除高亮效果
+            clearHighlight();
         }
         
         // 开始拖拽
@@ -1097,6 +1148,9 @@
                         cell.addEventListener('mouseenter', function(e) { 
                             handleCellMouseEnter(this, e); 
                         });
+                        cell.addEventListener('mouseleave', function(e) { 
+                            handleCellMouseLeave(this, e); 
+                        });
                         
                         // 填充数据
                         const scheduleData = allSchedules[scheduleName];
@@ -1223,14 +1277,58 @@
         
         // 处理鼠标进入事件（拖拽过程中）
         function handleCellMouseEnter(cell, e) {
-            // 如果是教室课表，不允许拖拽
-            if (currentScheduleType === 'classroom') {
-                return;
-            }
-            
             if (isDragging) {
                 handleDragMove(cell);
+            } else {
+                // 添加高亮效果（教室课表和学生课表都支持）
+                highlightRowAndColumn(cell);
             }
+        }
+        
+        // 处理鼠标离开事件
+        function handleCellMouseLeave(cell, e) {
+            // 如果不是拖拽状态，清除高亮效果
+            if (!isDragging) {
+                clearHighlight();
+            }
+        }
+        
+        // 高亮行和列
+        function highlightRowAndColumn(cell) {
+            // 先清除之前的高亮
+            clearHighlight();
+            
+            const row = parseInt(cell.getAttribute('data-row'));
+            const col = parseInt(cell.getAttribute('data-col'));
+            const table = cell.closest('table');
+            
+            if (!table) return;
+            
+            // 高亮当前单元格
+            cell.classList.add('cell-highlight');
+            
+            // 高亮同一行的所有单元格
+            const rowCells = table.querySelectorAll(`td[data-row="${row}"]`);
+            rowCells.forEach(rowCell => {
+                if (rowCell !== cell) { // 避免重复添加当前单元格
+                    rowCell.classList.add('row-highlight');
+                }
+            });
+            
+            // 高亮同一列的所有单元格
+            const colCells = table.querySelectorAll(`td[data-col="${col}"]`);
+            colCells.forEach(colCell => {
+                if (colCell !== cell) { // 避免重复添加当前单元格
+                    colCell.classList.add('col-highlight');
+                }
+            });
+        }
+        
+        // 清除所有高亮效果
+        function clearHighlight() {
+            document.querySelectorAll('.row-highlight, .col-highlight, .cell-highlight').forEach(cell => {
+                cell.classList.remove('row-highlight', 'col-highlight', 'cell-highlight');
+            });
         }
         
         // 编辑单元格
