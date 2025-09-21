@@ -267,3 +267,35 @@ th {
         align-items: stretch;
     }
 }
+
+/* 权限控制按钮样式 */
+.permission-btn {
+    padding: 4px 8px;
+    border: none;
+    border-radius: 3px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin: 1px;
+    min-width: 80px;
+}
+
+.permission-enabled {
+    background-color: #28a745;
+    color: white;
+}
+
+.permission-enabled:hover {
+    background-color: #dc3545;
+    transform: translateY(-1px);
+}
+
+.permission-disabled {
+    background-color: #6c757d;
+    color: white;
+}
+
+.permission-disabled:hover {
+    background-color: #28a745;
+    transform: translateY(-1px);
+}

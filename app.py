@@ -111,8 +111,8 @@ def admin():
     connection = get_db_connection()
     cursor = connection.cursor(dictionary=True)
 
-    # 查询所有用户
-    query = "SELECT username FROM users"
+    # 查询所有用户及其权限
+    query = "SELECT username, campus_schedule_permission FROM users"
     cursor.execute(query)
     teachers = cursor.fetchall()
     cursor.close()
@@ -209,6 +209,35 @@ def update_teacher():
         connection.close()
 
     return redirect(url_for('admin'))
+
+@app.route('/admin/update_permission', methods=['POST'])
+def update_teacher_permission():
+    if 'username' not in session:
+        return jsonify({"success": False, "message": "用户未登录."}), 403
+
+    # 检查用户名是否为"小荔"
+    username = session['username']
+    if username != "小荔":
+        return render_template('login.html', error="非管理员账户无法进入该页面")
+
+    teacher_username = request.form.get('username')
+    permission = request.form.get('permission') == 'true'
+
+    connection = get_db_connection()
+    cursor = connection.cursor()
+    query = "UPDATE users SET campus_schedule_permission = %s WHERE username = %s"
+    try:
+        cursor.execute(query, (permission, teacher_username))
+        connection.commit()
+        flash(f"教师'{teacher_username}'的校区课程表权限已更新!", 'success')
+    except Exception as e:
+        flash(f"权限更新失败: {str(e)}", 'error')
+    finally:
+        cursor.close()
+        connection.close()
+
+    return redirect(url_for('admin'))
+
 @app.route('/schedule_for_admin', methods=['GET'])
 def schedule_for_admin():
     if 'username' not in session or session['username'] != '小荔':
@@ -404,7 +433,7 @@ def update_schedule():
     username = session['username']
     connection = get_db_connection()
     if not connection:
-        return render_template('schedule.html', error="Database connection error.")
+        return render_template('schedule.html', error="Database connection error.", has_campus_permission=False)
 
     # 获取查询参数
     year = request.args.get('year')
@@ -414,7 +443,7 @@ def update_schedule():
     
     # 获取教师基本信息
     cursor = connection.cursor(dictionary=True)
-    query = "SELECT username, subject, address FROM users WHERE username = %s"
+    query = "SELECT username, subject, address, campus_schedule_permission FROM users WHERE username = %s"
     cursor.execute(query, (username,))
     teacher_info = cursor.fetchone()
 
@@ -477,7 +506,8 @@ def update_schedule():
                                 selected_month=month,
                                 selected_week=week,
                                 week_offset=int(week_offset),  # 传递周偏移量到模板
-                                all_weeks_schedule={})  # 添加空的all_weeks_schedule
+                                all_weeks_schedule={},  # 添加空的all_weeks_schedule
+                                has_campus_permission=teacher_info['campus_schedule_permission'] if teacher_info else False)
         else:
             # 如果没有指定周，显示该月所有周的数据
             all_weeks_schedule = {}
@@ -516,7 +546,8 @@ def update_schedule():
                                 selected_month=month,
                                 selected_week=None,
                                 week_offset=0,  # 传递周偏移量到模板
-                                total_weeks=total_weeks)  # 添加实际周数
+                                total_weeks=total_weeks,  # 添加实际周数
+                                has_campus_permission=teacher_info['campus_schedule_permission'] if teacher_info else False)
     else:
         # 如果没有指定年月，使用当前日期
         # 应用周偏移量
@@ -544,7 +575,8 @@ def update_schedule():
                             selected_month=today.month,
                             selected_week=None,
                             week_offset=current_week_offset,  # 传递周偏移量到模板
-                            all_weeks_schedule={})  # 添加空的all_weeks_schedule
+                            all_weeks_schedule={},  # 添加空的all_weeks_schedule
+                            has_campus_permission=teacher_info['campus_schedule_permission'] if teacher_info else False)
 
 @app.route('/logout')
 def logout():
@@ -577,13 +609,13 @@ def profile():
             cursor.close()
     
     cursor = connection.cursor(dictionary=True)
-    query = "SELECT username, subject, address FROM users WHERE username = %s"
+    query = "SELECT username, subject, address, campus_schedule_permission FROM users WHERE username = %s"
     cursor.execute(query, (username,))
     user_info = cursor.fetchone()
     cursor.close()
     connection.close()
     
-    return render_template('profile.html', user_info=user_info)
+    return render_template('profile.html', user_info=user_info, has_campus_permission=user_info['campus_schedule_permission'])
 
 @app.route('/change_password', methods=['GET', 'POST'])
 def change_password():
@@ -623,9 +655,35 @@ def change_password():
         cursor.close()
         connection.close()
         
-        return render_template('change_password.html', success="密码修改成功")
+        # 获取用户权限信息
+        connection = get_db_connection()
+        if connection:
+            cursor = connection.cursor(dictionary=True)
+            query = "SELECT campus_schedule_permission FROM users WHERE username = %s"
+            cursor.execute(query, (username,))
+            user_info = cursor.fetchone()
+            cursor.close()
+            connection.close()
+            has_campus_permission = user_info['campus_schedule_permission'] if user_info else False
+        else:
+            has_campus_permission = False
+        
+        return render_template('change_password.html', success="密码修改成功", has_campus_permission=has_campus_permission)
     
-    return render_template('change_password.html')
+    # 获取用户权限信息
+    connection = get_db_connection()
+    if connection:
+        cursor = connection.cursor(dictionary=True)
+        query = "SELECT campus_schedule_permission FROM users WHERE username = %s"
+        cursor.execute(query, (session['username'],))
+        user_info = cursor.fetchone()
+        cursor.close()
+        connection.close()
+        has_campus_permission = user_info['campus_schedule_permission'] if user_info else False
+    else:
+        has_campus_permission = False
+    
+    return render_template('change_password.html', has_campus_permission=has_campus_permission)
 
 def init_db():
     connection = get_db_connection()
@@ -642,6 +700,10 @@ def init_db():
         cursor.execute("SHOW COLUMNS FROM users LIKE 'address'")
         if not cursor.fetchone():
             cursor.execute("ALTER TABLE users ADD COLUMN address VARCHAR(200) DEFAULT NULL")
+        
+        cursor.execute("SHOW COLUMNS FROM users LIKE 'campus_schedule_permission'")
+        if not cursor.fetchone():
+            cursor.execute("ALTER TABLE users ADD COLUMN campus_schedule_permission BOOLEAN DEFAULT FALSE")
         
         # 校区课程表：增加classroom字段，唯一索引为(month, campus, classroom, day_index, time_slot_index)
         cursor.execute("""
@@ -730,6 +792,22 @@ def campus_schedule():
     # 获取当前用户信息
     current_user = session['username']
     is_admin = current_user == "小荔"
+    
+    # 检查用户是否有查看校区课程表的权限
+    if not is_admin:
+        connection = get_db_connection()
+        if connection:
+            cursor = connection.cursor(dictionary=True)
+            query = "SELECT campus_schedule_permission FROM users WHERE username = %s"
+            cursor.execute(query, (current_user,))
+            user_permission = cursor.fetchone()
+            cursor.close()
+            connection.close()
+            
+            if not user_permission or not user_permission['campus_schedule_permission']:
+                return render_template('login.html', error="您没有访问校区课程表的权限，请联系管理员")
+        else:
+            return render_template('login.html', error="数据库连接错误")
     
     # 获取当前月份参数
     month = request.args.get('month') if request.method == 'GET' else request.json.get('month')
@@ -1027,6 +1105,25 @@ def campus_schedule_data():
     # 检查用户是否已登录
     if 'username' not in session:
         return jsonify({"success": False, "message": "用户未登录"}), 401
+    
+    # 检查用户是否有查看校区课程表的权限
+    current_user = session['username']
+    is_admin = current_user == "小荔"
+    
+    if not is_admin:
+        connection = get_db_connection()
+        if connection:
+            cursor = connection.cursor(dictionary=True)
+            query = "SELECT campus_schedule_permission FROM users WHERE username = %s"
+            cursor.execute(query, (current_user,))
+            user_permission = cursor.fetchone()
+            cursor.close()
+            connection.close()
+            
+            if not user_permission or not user_permission['campus_schedule_permission']:
+                return jsonify({"success": False, "message": "您没有访问校区课程表的权限"}), 403
+        else:
+            return jsonify({"success": False, "message": "数据库连接错误"}), 500
     
     # 获取参数
     month = request.args.get('month')

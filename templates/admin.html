@@ -73,6 +73,13 @@
                                         <input type="password" name="new_password" placeholder="输入密码" required>
                                         <button type="submit" class="edit-btn">修改密码</button>
                                     </form>
+                                    <form action="{{ url_for('update_teacher_permission') }}" method="post" class="d-inline">
+                                        <input type="hidden" name="username" value="{{ teachers[i].username }}">
+                                        <input type="hidden" name="permission" value="{{ 'false' if teachers[i].campus_schedule_permission else 'true' }}">
+                                        <button type="submit" class="permission-btn {{ 'permission-enabled' if teachers[i].campus_schedule_permission else 'permission-disabled' }}">
+                                            {{ '禁用校区课表' if teachers[i].campus_schedule_permission else '启用校区课表' }}
+                                        </button>
+                                    </form>
                                     <form action="{{ url_for('delete_teacher') }}" method="post" class="d-inline" onsubmit="return confirm('确定要删除该教师吗？')">
                                         <input type="hidden" name="username" value="{{ teachers[i].username }}">
                                         <button type="submit" class="delete-btn">删除</button>
@@ -86,6 +93,13 @@
                                         <input type="hidden" name="username" value="{{ teachers[i + 1].username }}">
                                         <input type="password" name="new_password" placeholder="输入密码" required>
                                         <button type="submit" class="edit-btn">修改密码</button>
+                                    </form>
+                                    <form action="{{ url_for('update_teacher_permission') }}" method="post" class="d-inline">
+                                        <input type="hidden" name="username" value="{{ teachers[i + 1].username }}">
+                                        <input type="hidden" name="permission" value="{{ 'false' if teachers[i + 1].campus_schedule_permission else 'true' }}">
+                                        <button type="submit" class="permission-btn {{ 'permission-enabled' if teachers[i + 1].campus_schedule_permission else 'permission-disabled' }}">
+                                            {{ '禁用校区课表' if teachers[i + 1].campus_schedule_permission else '启用校区课表' }}
+                                        </button>
                                     </form>
                                     <form action="{{ url_for('delete_teacher') }}" method="post" class="d-inline" onsubmit="return confirm('确定要删除该教师吗？')">
                                         <input type="hidden" name="username" value="{{ teachers[i + 1].username }}">
