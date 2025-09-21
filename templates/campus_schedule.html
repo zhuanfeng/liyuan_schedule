@@ -330,7 +330,7 @@
             <span id="classroomSelectContainer" style="display:none;">
                 <label style="font-weight:bold;color:#0c5460;">选择教室：</label>
                 <select id="classroomSelect" name="classroom" style="margin-right:10px;">
-                    <option value="">请选择教室</option>
+                    <option value="">查看所有教室</option>
                 </select>
             </span>
         </form>
@@ -340,13 +340,19 @@
     <div class="type-switch">
         <button id="classroomBtn">教室课表</button>
         <button id="studentBtn">学生课表</button>
+        {% if is_admin %}
         <a href="/admin" class="admin-back-btn">返回管理员页面</a>
+        {% else %}
+        <a href="/update_schedule" class="admin-back-btn">返回课表页面</a>
+        {% endif %}
     </div>
 
     <!-- 新增学生课表按钮 -->
+    {% if is_admin %}
     <button id="addStudentBtn" class="add-schedule-btn">
         新增学生课表
     </button>
+    {% endif %}
 
     <!-- 多个课程表容器 -->
     <div id="classroomContainer">
@@ -377,13 +383,15 @@
         const currentMonth = "{{ current_month }}";
         const currentCampus = "{{ current_campus }}";
         const currentType = "{{ current_type }}";
+        const currentUser = "{{ current_user }}";
+        const isAdmin = {{ is_admin|lower }};
         const [curYear, curMonth] = currentMonth.split('-');
         const yearSelect = document.getElementById('yearSelect');
         const monthSelect = document.getElementById('monthSelect');
         const campusSelect = document.getElementById('campusSelect');
         const classroomBtn = document.getElementById('classroomBtn');
         const studentBtn = document.getElementById('studentBtn');
-        const addStudentBtn = document.getElementById('addStudentBtn');
+        const addStudentBtn = document.getElementById('addStudentBtn'); // 可能为null（对于非管理员用户）
         const studentSelectContainer = document.getElementById('studentSelectContainer');
         const studentSelect = document.getElementById('studentSelect');
         const classroomSelectContainer = document.getElementById('classroomSelectContainer');
@@ -451,7 +459,9 @@
             
             classroomBtn.classList.toggle('active', currentScheduleType === 'classroom');
             studentBtn.classList.toggle('active', currentScheduleType === 'student');
-            addStudentBtn.style.display = currentScheduleType === 'student' ? 'block' : 'none';
+            if (addStudentBtn) {
+                addStudentBtn.style.display = currentScheduleType === 'student' && isAdmin ? 'block' : 'none';
+            }
             
             // 显示/隐藏学生选择框
             if (currentScheduleType === 'student') {
@@ -568,13 +578,13 @@
                 .then(data => {
                     if (data.success) {
                         // 清空现有选项
-                        classroomSelect.innerHTML = '<option value="">请选择教室</option>';
+                        classroomSelect.innerHTML = '<option value="">查看所有教室</option>';
                         
                         // 添加教室选项
                         data.schedules_list.forEach(classroomName => {
                             const option = document.createElement('option');
                             option.value = classroomName;
-                            option.textContent = classroomName;
+                            option.textContent = `教室${classroomName.toUpperCase()}`;
                             classroomSelect.appendChild(option);
                         });
                         
@@ -583,9 +593,9 @@
                         const selectedClassroomFromUrl = urlParams.get('classroom');
                         if (selectedClassroomFromUrl && data.schedules_list.includes(selectedClassroomFromUrl)) {
                             classroomSelect.value = selectedClassroomFromUrl;
-                        } else if (data.schedules_list.includes('a')) {
-                            // 如果没有URL参数，默认选择教室a
-                            classroomSelect.value = 'a';
+                        } else {
+                            // 如果没有URL参数，默认选择查看所有教室
+                            classroomSelect.value = '';
                             // 更新URL以反映默认选择
                             updateURL();
                         }
@@ -600,7 +610,8 @@
         }
 
         // 新增学生课表
-        addStudentBtn.onclick = function() {
+        if (addStudentBtn) {
+            addStudentBtn.onclick = function() {
             const studentName = prompt('请输入学生课表名称：');
             if (studentName && studentName.trim()) {
                 const month = yearSelect.value + '-' + monthSelect.value;
@@ -634,7 +645,8 @@
                     alert('添加失败: 网络错误');
                 });
             }
-        };
+            };
+        }
 
         // ========== 拖拽和撤回功能实现 ===========
         
@@ -805,7 +817,7 @@
         
         // 开始拖拽
         function startDrag(cell) {
-            if (currentScheduleType !== 'student' || !cell.textContent.trim()) {
+            if (!isAdmin || currentScheduleType !== 'student' || !cell.textContent.trim()) {
                 return false;
             }
             
@@ -1021,11 +1033,11 @@
             } else if (type === 'classroom') {
                 const selectedClassroom = classroomSelect.value;
                 if (selectedClassroom && schedulesList.includes(selectedClassroom)) {
+                    // 如果选择了特定教室，只显示该教室
                     displayList = [selectedClassroom];
                 } else {
-                    // 如果没有选择教室或选择的学生不存在，显示提示
-                    container.innerHTML = '<div style="text-align:center; padding:20px; color:#999;">请选择要查看的教室课程表</div>';
-                    return;
+                    // 如果没有选择教室，显示所有教室（与管理员一样）
+                    displayList = schedulesList;
                 }
             }
 
@@ -1039,16 +1051,18 @@
                 } else {
                     titleDiv.textContent = scheduleName;
                     
-                    // 为学生课表添加删除按钮
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'delete-btn';
-                    deleteBtn.textContent = '删除';
-                    deleteBtn.onclick = function() {
-                        if (confirm(`确定要删除课表"${scheduleName}"吗？`)) {
-                            deleteStudentSchedule(scheduleName);
-                        }
-                    };
-                    titleDiv.appendChild(deleteBtn);
+                    // 为学生课表添加删除按钮（只有管理员可见）
+                    if (isAdmin) {
+                        const deleteBtn = document.createElement('button');
+                        deleteBtn.className = 'delete-btn';
+                        deleteBtn.textContent = '删除';
+                        deleteBtn.onclick = function() {
+                            if (confirm(`确定要删除课表"${scheduleName}"吗？`)) {
+                                deleteStudentSchedule(scheduleName);
+                            }
+                        };
+                        titleDiv.appendChild(deleteBtn);
+                    }
                 }
                 
                 container.appendChild(titleDiv);
@@ -1242,11 +1256,11 @@
             const isDoubleClick = (currentTime - lastClickTime) < 300;
             lastClickTime = currentTime;
             
-            if (isDoubleClick) {
-                // 双击编辑
+            if (isDoubleClick && isAdmin) {
+                // 双击编辑 - 只有管理员可以
                 editCell(cell);
             } else {
-                // 单击选中
+                // 单击选中 - 所有用户都可以
                 clearCellSelection();
                 cell.classList.add('cell-selected');
                 selectedCell = cell;
@@ -1256,6 +1270,11 @@
         // 处理鼠标按下事件（开始拖拽）
         function handleCellMouseDown(cell, e) {
             if (e.button !== 0) return; // 只处理左键
+            
+            // 只有管理员才能进行拖拽操作
+            if (!isAdmin) {
+                return;
+            }
             
             // 如果是教室课表，不允许拖拽
             if (currentScheduleType === 'classroom') {
@@ -1333,6 +1352,12 @@
         
         // 编辑单元格
         function editCell(cell) {
+            // 只有管理员才能编辑
+            if (!isAdmin) {
+                alert('权限不足，只有管理员可以编辑课程表');
+                return;
+            }
+            
             // 如果是教室课表，不允许编辑（只读）
             if (currentScheduleType === 'classroom') {
                 return;

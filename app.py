@@ -723,6 +723,14 @@ init_db()
 
 @app.route('/campus_schedule', methods=['GET', 'POST'])
 def campus_schedule():
+    # 检查用户是否已登录
+    if 'username' not in session:
+        return redirect(url_for('login'))
+    
+    # 获取当前用户信息
+    current_user = session['username']
+    is_admin = current_user == "小荔"
+    
     # 获取当前月份参数
     month = request.args.get('month') if request.method == 'GET' else request.json.get('month')
     # 获取当前校区参数
@@ -736,6 +744,10 @@ def campus_schedule():
         month = f"{today.year}-{today.month:02d}"
 
     if request.method == 'POST':
+        # 只有管理员才能编辑课程表
+        if not is_admin:
+            return jsonify({"success": False, "message": "权限不足，只有管理员可以编辑课程表"}), 403
+        
         # 处理课程表更新
         data = request.get_json()
         campus = data.get('campus', 'wendefu')
@@ -863,7 +875,7 @@ def campus_schedule():
     # GET请求 - 从数据库读取数据
     connection = get_db_connection()
     if not connection:
-        return render_template('campus_schedule.html', error="数据库连接错误")
+        return render_template('campus_schedule.html', error="数据库连接错误", current_user=current_user, is_admin=is_admin)
     
     # 基础数据
     title = "暑假崇达数理化课程表"
@@ -931,11 +943,20 @@ def campus_schedule():
                          current_month=month,
                          current_campus=campus,
                          current_type=schedule_type,
-                         campus_classrooms=campus_classrooms)
+                         campus_classrooms=campus_classrooms,
+                         current_user=current_user,
+                         is_admin=is_admin)
 
 @app.route('/add_student_schedule', methods=['POST'])
 def add_student_schedule():
     """添加新的学生课表"""
+    # 检查用户是否已登录且为管理员
+    if 'username' not in session:
+        return jsonify({"success": False, "message": "用户未登录"}), 401
+    
+    if session['username'] != "小荔":
+        return jsonify({"success": False, "message": "权限不足，只有管理员可以添加学生课表"}), 403
+    
     data = request.get_json()
     month = data.get('month')
     campus = data.get('campus')
@@ -965,6 +986,13 @@ def add_student_schedule():
 @app.route('/delete_student_schedule', methods=['POST'])
 def delete_student_schedule():
     """删除学生课表"""
+    # 检查用户是否已登录且为管理员
+    if 'username' not in session:
+        return jsonify({"success": False, "message": "用户未登录"}), 401
+    
+    if session['username'] != "小荔":
+        return jsonify({"success": False, "message": "权限不足，只有管理员可以删除学生课表"}), 403
+    
     data = request.get_json()
     month = data.get('month')
     campus = data.get('campus')
@@ -996,6 +1024,10 @@ def delete_student_schedule():
 
 @app.route('/campus_schedule_data', methods=['GET'])
 def campus_schedule_data():
+    # 检查用户是否已登录
+    if 'username' not in session:
+        return jsonify({"success": False, "message": "用户未登录"}), 401
+    
     # 获取参数
     month = request.args.get('month')
     campus = request.args.get('campus', 'wendefu')
