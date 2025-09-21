@@ -343,7 +343,7 @@
         {% if is_admin %}
         <a href="/admin" class="admin-back-btn">返回管理员页面</a>
         {% else %}
-        <a href="/update_schedule" class="admin-back-btn">返回课表页面</a>
+        <a href="{{ url_for('update_schedule') }}" class="admin-back-btn">返回课表页面</a>
         {% endif %}
     </div>
 
