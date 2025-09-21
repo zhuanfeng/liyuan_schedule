@@ -1054,11 +1054,11 @@ def campus_schedule():
             # 验证数据一致性
             consistency_check = _verify_data_consistency(cursor, month, campus, schedule_type, student_name if schedule_type == 'student' else None)
             if not consistency_check['success']:
-                connection.rollback()
-                cursor.close()
-                connection.close()
-                return jsonify({
-                    "success": False,
+                            connection.rollback()
+                            cursor.close()
+                            connection.close()
+                            return jsonify({
+                                "success": False, 
                     "message": f"操作导致数据不一致，已回滚: {consistency_check['message']}"
                 }), 500
             
