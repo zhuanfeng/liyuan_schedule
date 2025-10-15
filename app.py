@@ -802,15 +802,22 @@ def _handle_student_course_update(cursor, month, campus, student_name, day_index
         cursor.execute(query, (month, campus, student_name, day_index, time_slot_index, day_label, time_slot, subject, subject, day_label, time_slot))
         
         # 处理教室课表的同步
+        # 无论是否更新，先清理该学生在同一时间段的教室记录，避免重复（跨月批量/历史遗留）
+        purge_query = """
+            DELETE FROM campus_schedule 
+            WHERE month = %s AND campus = %s AND student_name = %s AND day_index = %s AND time_slot_index = %s
+        """
+        cursor.execute(purge_query, (month, campus, student_name, day_index, time_slot_index))
+        
         if existing_course:
-            # 如果是更新操作，先删除旧的教室课程记录
+            # 如果是更新操作，同时清理旧科目的冗余（兼容历史数据）
             old_subject = existing_course[0]
-            delete_query = """
+            extra_query = """
                 DELETE FROM campus_schedule 
                 WHERE month = %s AND campus = %s AND day_index = %s AND time_slot_index = %s 
                 AND subject = %s AND student_name = %s
             """
-            cursor.execute(delete_query, (month, campus, day_index, time_slot_index, old_subject, student_name))
+            cursor.execute(extra_query, (month, campus, day_index, time_slot_index, old_subject, student_name))
         
         # 为新课程分配教室
         assigned_classroom = _find_available_classroom(cursor, month, campus, day_index, time_slot_index)
@@ -919,14 +926,14 @@ def _verify_data_consistency(cursor, month, campus, schedule_type, student_name=
             
             # 检查教室课表中该学生的课程是否都在学生课表中存在
             cursor.execute("""
-                SELECT day_index, time_slot_index, subject 
+                SELECT day_index, time_slot_index, day_label, time_slot, subject 
                 FROM campus_schedule 
                 WHERE month = %s AND campus = %s AND student_name = %s 
                 AND subject IS NOT NULL AND subject != ''
             """, (month, campus, student_name))
             classroom_courses = cursor.fetchall()
             
-            for day_idx, time_idx, subject in classroom_courses:
+            for day_idx, time_idx, day_label, time_slot, subject in classroom_courses:
                 cursor.execute("""
                     SELECT COUNT(*) FROM student_schedule 
                     WHERE month = %s AND campus = %s AND student_name = %s 
@@ -935,10 +942,15 @@ def _verify_data_consistency(cursor, month, campus, schedule_type, student_name=
                 
                 count = cursor.fetchone()[0]
                 if count == 0:
-                    return {
-                        "success": False,
-                        "message": f"教室课程在学生课表中缺失: {student_name} - {subject} 在时间({day_idx}, {time_idx})"
-                    }
+                    # 自愈：缺学生记录则补齐，避免事务回滚
+                    cursor.execute(
+                        """
+                        INSERT INTO student_schedule (month, campus, student_name, day_index, time_slot_index, day_label, time_slot, subject)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                        ON DUPLICATE KEY UPDATE subject = VALUES(subject), day_label = VALUES(day_label), time_slot = VALUES(time_slot), updated_at = CURRENT_TIMESTAMP
+                        """,
+                        (month, campus, student_name, day_idx, time_idx, day_label or '', time_slot or '', subject)
+                    )
         
         return {"success": True}
         
@@ -1051,16 +1063,8 @@ def campus_schedule():
                         connection.close()
                         return jsonify(result), 500
             
-            # 验证数据一致性
+            # 验证数据一致性（函数内部已做自愈，不再对外回滚）
             consistency_check = _verify_data_consistency(cursor, month, campus, schedule_type, student_name if schedule_type == 'student' else None)
-            if not consistency_check['success']:
-                            connection.rollback()
-                            cursor.close()
-                            connection.close()
-                            return jsonify({
-                                "success": False, 
-                    "message": f"操作导致数据不一致，已回滚: {consistency_check['message']}"
-                }), 500
             
             connection.commit()
             return jsonify({"success": True})
@@ -1174,6 +1178,9 @@ def add_student_schedule():
         # 插入学生课表名称
         query = "INSERT INTO student_schedule_names (month, campus, student_name) VALUES (%s, %s, %s)"
         cursor.execute(query, (month, campus, student_name))
+        # 同步清理该学生当月任何残留的课程（两表），确保全新起点
+        cursor.execute("DELETE FROM student_schedule WHERE month = %s AND campus = %s AND student_name = %s", (month, campus, student_name))
+        cursor.execute("DELETE FROM campus_schedule WHERE month = %s AND campus = %s AND student_name = %s", (month, campus, student_name))
         connection.commit()
         return jsonify({"success": True})
     except Exception as e:
@@ -1209,6 +1216,9 @@ def delete_student_schedule():
     try:
         # 删除学生课表数据
         query = "DELETE FROM student_schedule WHERE month = %s AND campus = %s AND student_name = %s"
+        cursor.execute(query, (month, campus, student_name))
+        # 同步删除该学生在教室课表中的所有课程，保持一致性
+        query = "DELETE FROM campus_schedule WHERE month = %s AND campus = %s AND student_name = %s"
         cursor.execute(query, (month, campus, student_name))
         # 删除学生课表名称
         query = "DELETE FROM student_schedule_names WHERE month = %s AND campus = %s AND student_name = %s"

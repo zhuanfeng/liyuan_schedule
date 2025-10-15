@@ -305,6 +305,23 @@
             background: #138496;
         }
 
+        /* 批量按周创建控制区 */
+        .repeat-controls {
+            text-align: center;
+            margin: -8px 0 16px 0;
+            color: #0c5460;
+            font-size: 0.95rem;
+        }
+        .repeat-controls input[type="date"] {
+            margin: 0 6px;
+            padding: 4px 6px;
+            font-size: 0.95rem;
+        }
+        .repeat-controls label {
+            margin: 0 6px;
+            user-select: none;
+        }
+
     </style>
 </head>
 <body>
@@ -347,6 +364,17 @@
         {% endif %}
     </div>
 
+    {% if is_admin %}
+    <!-- 批量按周创建控制区（仅管理员可见，学生课表模式下显示） -->
+    <div id="repeatControls" class="repeat-controls" style="display:none;">
+        <label>
+            <input id="repeatToggle" type="checkbox" /> 启用按周批量创建
+        </label>
+        <label>开始日期：<input id="repeatStart" type="date" /></label>
+        <label>结束日期：<input id="repeatEnd" type="date" /></label>
+    </div>
+    {% endif %}
+
     <!-- 新增学生课表按钮 -->
     {% if is_admin %}
     <button id="addStudentBtn" class="add-schedule-btn">
@@ -384,7 +412,7 @@
         const currentCampus = "{{ current_campus }}";
         const currentType = "{{ current_type }}";
         const currentUser = "{{ current_user }}";
-        const isAdmin = {{ is_admin|lower }};
+        const isAdmin = ("{{ 'true' if is_admin else 'false' }}".toLowerCase() === 'true');
         const [curYear, curMonth] = currentMonth.split('-');
         const yearSelect = document.getElementById('yearSelect');
         const monthSelect = document.getElementById('monthSelect');
@@ -396,6 +424,11 @@
         const studentSelect = document.getElementById('studentSelect');
         const classroomSelectContainer = document.getElementById('classroomSelectContainer');
         const classroomSelect = document.getElementById('classroomSelect');
+        // 批量创建控件（仅管理员存在）
+        const repeatControls = isAdmin ? document.getElementById('repeatControls') : null;
+        const repeatToggle = isAdmin ? document.getElementById('repeatToggle') : null;
+        const repeatStart = isAdmin ? document.getElementById('repeatStart') : null;
+        const repeatEnd = isAdmin ? document.getElementById('repeatEnd') : null;
         
         // ========== 拖拽和撤回相关变量 ===========
         let operationHistory = []; // 操作历史栈
@@ -461,6 +494,9 @@
             studentBtn.classList.toggle('active', currentScheduleType === 'student');
             if (addStudentBtn) {
                 addStudentBtn.style.display = currentScheduleType === 'student' && isAdmin ? 'block' : 'none';
+            }
+            if (repeatControls) {
+                repeatControls.style.display = (currentScheduleType === 'student' && isAdmin) ? 'block' : 'none';
             }
             
             // 显示/隐藏学生选择框
@@ -965,6 +1001,15 @@
                     loadScheduleData(); // 其他模式直接加载数据
                 }
                 updateDateRange();
+                // 初始化批量创建日期默认值（仅管理员）
+                if (isAdmin && repeatStart && repeatEnd && (!repeatStart.value || !repeatEnd.value)) {
+                    const y = yearSelect.value;
+                    const m = monthSelect.value;
+                    const first = `${y}-${m}-01`;
+                    const last = `${y}-${m}-${String(getLastDayOfMonth(y, m)).padStart(2, '0')}`;
+                    repeatStart.value = first;
+                    repeatEnd.value = last;
+                }
             }, 100);
         });
 
@@ -1426,6 +1471,15 @@
                         updateCellDisplay(cell, newValue);
                         // 编辑完成后清除选中状态
                         clearCellSelection();
+
+                        // 若开启按周批量创建：仅在学生课表、管理员、从空白单元格创建新内容时触发
+                        if (isAdmin && currentScheduleType === 'student' && repeatToggle && repeatToggle.checked && newValue && !currentText) {
+                            const rowIndex = row;
+                            const editedColIndex = col;
+                            const studentName = student;
+                            // 异步执行，不阻塞主流程
+                            batchCreateWeekly(newValue, rowIndex, editedColIndex, studentName);
+                        }
                     } else {
                         alert('保存失败: ' + (data.message || '未知错误'));
                         cell.innerHTML = originalContent;
@@ -1450,6 +1504,193 @@
             });
         }
         
+        // 按周批量创建（跨月），仅用于学生课表（管理员）
+        async function batchCreateWeekly(subject, rowIndex, editedColIndex, studentName) {
+            try {
+                if (!repeatStart || !repeatEnd || !repeatStart.value || !repeatEnd.value) {
+                    alert('请先设置开始和结束日期');
+                    return;
+                }
+                // 使用本地解析避免时区导致的日期偏移
+                const parseLocalDate = (s) => {
+                    const parts = s.split('-');
+                    const y = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10) - 1;
+                    const d = parseInt(parts[2], 10);
+                    return new Date(y, m, d);
+                };
+                const start = parseLocalDate(repeatStart.value);
+                const end = parseLocalDate(repeatEnd.value);
+                if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                    alert('日期格式不正确');
+                    return;
+                }
+                if (start > end) {
+                    alert('开始日期不能晚于结束日期');
+                    return;
+                }
+
+                // 当前编辑单元格的真实日期
+                const baseYear = parseInt(yearSelect.value, 10);
+                const baseMonthZero = parseInt(monthSelect.value, 10) - 1; // 0-11
+                const editedDate = new Date(baseYear, baseMonthZero, editedColIndex + 1);
+
+                // 找到范围内第一个与编辑日同星期的日期
+                let first = new Date(editedDate);
+                while (first > start) first.setDate(first.getDate() - 7);
+                while (first < start) first.setDate(first.getDate() + 7);
+
+                // 生成所有目标日期（排除已编辑当天）
+                const targets = [];
+                for (let d = new Date(first); d <= end; d.setDate(d.getDate() + 7)) {
+                    const nd = new Date(d);
+                    if (
+                        nd.getFullYear() === editedDate.getFullYear() &&
+                        nd.getMonth() === editedDate.getMonth() &&
+                        nd.getDate() === editedDate.getDate()
+                    ) {
+                        continue;
+                    }
+                    targets.push(nd);
+                }
+                if (targets.length === 0) {
+                    return;
+                }
+
+                // 按月聚合
+                const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const byMonth = {};
+                targets.forEach(d => {
+                    const k = monthKey(d);
+                    if (!byMonth[k]) byMonth[k] = [];
+                    byMonth[k].push(d);
+                });
+
+                // 预加载各月课表，做冲突检测
+                const months = Object.keys(byMonth);
+                const monthDataMap = {};
+                await Promise.all(months.map(async (mstr) => {
+                    try {
+                        const url = `/campus_schedule_data?month=${mstr}&campus=${campusSelect.value}&type=student&student=${encodeURIComponent(studentName)}`;
+                        const res = await fetch(url);
+                        const json = await res.json();
+                        monthDataMap[mstr] = (json && json.success && json.all_schedules) ? json.all_schedules[studentName] : null;
+                    } catch (e) {
+                        monthDataMap[mstr] = null;
+                    }
+                }));
+
+                // 对缺失课表的月份，先创建学生课表
+                const monthsToCreate = months.filter(mstr => !monthDataMap[mstr]);
+                if (monthsToCreate.length > 0) {
+                    await Promise.all(monthsToCreate.map(mstr => {
+                        return fetch('/add_student_schedule', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                month: mstr,
+                                campus: campusSelect.value,
+                                student_name: studentName
+                            })
+                        }).catch(() => {});
+                    }));
+                }
+
+                // 找出冲突日期
+                const conflicts = [];
+                targets.forEach(d => {
+                    const k = monthKey(d);
+                    const sched = monthDataMap[k];
+                    const dayIdx = d.getDate() - 1; // 0-based
+                    const occupied = sched && sched[rowIndex] && sched[rowIndex][dayIdx];
+                    if (occupied) {
+                        conflicts.push(`${k}-${String(d.getDate()).padStart(2,'0')} ${timeSlots[rowIndex]}`);
+                    }
+                });
+
+                if (conflicts.length > 0) {
+                    const ok = confirm(`以下时段已存在课程，确认覆盖吗？\n\n${conflicts.join('\n')}`);
+                    if (!ok) return;
+                }
+
+                // 发送创建/覆盖请求
+                const weekdayNames = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+                const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+                const errors = [];
+                for (const d of targets) {
+                    const mstr = monthKey(d);
+                    const dayIdx = d.getDate() - 1;
+                    const dayLabel = weekdayNames[d.getDay()];
+                    const timeSlotText = timeSlots[rowIndex];
+                    const requestData = {
+                        month: mstr,
+                        campus: campusSelect.value,
+                        type: 'student',
+                        day_index: dayIdx,
+                        time_slot_index: rowIndex,
+                        subject: subject,
+                        day_label: dayLabel,
+                        time_slot: timeSlotText,
+                        student_name: studentName
+                    };
+                    let attempt = 0;
+                    let ok = false;
+                    while (attempt < 3 && !ok) {
+                        attempt++;
+                        try {
+                            console.log('[BatchCreate] POST', { mstr, dayIdx: dayIdx+1, timeSlotText, attempt });
+                            const resp = await fetch('/campus_schedule', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(requestData)
+                            });
+                            let json;
+                            try { json = await resp.json(); } catch (_) { json = { success: false, message: '响应解析失败' }; }
+                            const message = (json && json.message) ? String(json.message) : '';
+                            const isDeadlock = message.includes('Deadlock') || message.includes('1213');
+                            if (resp.ok && json && json.success === true) {
+                                ok = true;
+                                console.log('[BatchCreate] OK', { mstr, day: dayIdx+1, timeSlotText });
+                                break;
+                            }
+                            if (isDeadlock && attempt < 3) {
+                                await sleep(120 * attempt);
+                                continue;
+                            }
+                            throw new Error(`${mstr} 第${dayIdx+1}天 ${timeSlotText} 写入失败：${message || `请求失败 (${resp.status})`}`);
+                        } catch (e) {
+                            if (attempt >= 3) {
+                                errors.push(e.message || String(e));
+                            } else {
+                                await sleep(120 * attempt);
+                            }
+                        }
+                    }
+                }
+                if (errors.length > 0) {
+                    alert('部分写入失败：\n' + errors.join('\n'));
+                }
+
+                // 同步更新当前月份可见表格中的相应单元格
+                const visibleMonthKey = `${yearSelect.value}-${monthSelect.value}`;
+                if (byMonth[visibleMonthKey]) {
+                    const table = document.querySelector(`#schedule-${studentName}-table`);
+                    if (table) {
+                        byMonth[visibleMonthKey].forEach(d => {
+                            const dayIdx = d.getDate() - 1;
+                            const targetCell = table.querySelector(`td[data-row="${rowIndex}"][data-col="${dayIdx}"]`);
+                            if (targetCell) {
+                                updateCellDisplay(targetCell, subject);
+                            }
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('Batch create error:', err);
+                alert('批量创建失败：' + (err && err.message ? err.message : '网络或数据错误'));
+            }
+        }
+
         function updateCellDisplay(cell, subject) {
             // 清除原有的class
             cell.className = cell.className.replace(/subject-\w+/g, '');
