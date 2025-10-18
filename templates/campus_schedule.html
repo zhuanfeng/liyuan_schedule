@@ -876,11 +876,50 @@
                 return;
             }
             
-            // 如果这个单元格还没有被标记为拖拽目标
-            if (!draggedCells.includes(cell)) {
-                draggedCells.push(cell);
-                cell.classList.add('cell-drag-target');
+            // 确保在同一个学生或教室内拖动
+            const startStudent = dragStartCell.getAttribute('data-student');
+            const startClassroom = dragStartCell.getAttribute('data-classroom');
+            const currentStudent = cell.getAttribute('data-student');
+            const currentClassroom = cell.getAttribute('data-classroom');
+            
+            if (startStudent !== currentStudent || startClassroom !== currentClassroom) {
+                return;
             }
+            
+            // 获取起始和当前单元格的行列坐标
+            const startRow = parseInt(dragStartCell.getAttribute('data-row'));
+            const startCol = parseInt(dragStartCell.getAttribute('data-col'));
+            const currentRow = parseInt(cell.getAttribute('data-row'));
+            const currentCol = parseInt(cell.getAttribute('data-col'));
+            
+            // 计算矩形范围
+            const minRow = Math.min(startRow, currentRow);
+            const maxRow = Math.max(startRow, currentRow);
+            const minCol = Math.min(startCol, currentCol);
+            const maxCol = Math.max(startCol, currentCol);
+            
+            // 清除之前的拖拽目标标记
+            draggedCells.forEach(c => c.classList.remove('cell-drag-target'));
+            draggedCells = [dragStartCell];
+            
+            // 找到矩形区域内的所有单元格
+            const allCells = document.querySelectorAll('td[data-row][data-col]');
+            allCells.forEach(c => {
+                const cellRow = parseInt(c.getAttribute('data-row'));
+                const cellCol = parseInt(c.getAttribute('data-col'));
+                const cellStudent = c.getAttribute('data-student');
+                const cellClassroom = c.getAttribute('data-classroom');
+                
+                // 检查是否在矩形范围内且属于同一个学生/教室
+                if (cellRow >= minRow && cellRow <= maxRow && 
+                    cellCol >= minCol && cellCol <= maxCol &&
+                    cellStudent === startStudent && cellClassroom === startClassroom) {
+                    if (c !== dragStartCell) {
+                        draggedCells.push(c);
+                        c.classList.add('cell-drag-target');
+                    }
+                }
+            });
         }
         
         // 结束拖拽
@@ -892,10 +931,12 @@
             
             const sourceContent = dragStartCell.textContent.trim();
             const promises = [];
+            const cellsForBatchCreate = []; // 记录需要批量创建的单元格信息
             
             // 复制内容到所有拖拽经过的单元格
             draggedCells.forEach(cell => {
                 if (cell !== dragStartCell) {
+                    const originalContent = cell.textContent.trim(); // 记录原始内容
                     updateCellDisplay(cell, sourceContent);
                     
                     // 准备服务器更新请求
@@ -926,12 +967,28 @@
                             body: JSON.stringify(requestData)
                         })
                     );
+                    
+                    // 如果开启批量创建且原单元格为空，记录下来
+                    if (isAdmin && currentScheduleType === 'student' && repeatToggle && repeatToggle.checked && sourceContent && !originalContent) {
+                        cellsForBatchCreate.push({
+                            rowIndex: row,
+                            colIndex: col,
+                            studentName: student
+                        });
+                    }
                 }
             });
             
             // 批量发送请求到服务器
             Promise.all(promises).then(responses => {
                 console.log('Drag fill completed');
+                
+                // 如果有需要批量创建的单元格，逐个触发批量创建
+                if (cellsForBatchCreate.length > 0) {
+                    cellsForBatchCreate.forEach(cellInfo => {
+                        batchCreateWeekly(sourceContent, cellInfo.rowIndex, cellInfo.colIndex, cellInfo.studentName);
+                    });
+                }
             }).catch(error => {
                 console.error('Error during drag fill:', error);
                 // 如果出错，重新加载数据
