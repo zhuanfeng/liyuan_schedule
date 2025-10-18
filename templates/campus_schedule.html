@@ -932,6 +932,7 @@
             const sourceContent = dragStartCell.textContent.trim();
             const promises = [];
             const cellsForBatchCreate = []; // 记录需要批量创建的单元格信息
+            const cellsForBatchDelete = []; // 记录需要批量删除的单元格信息
             
             // 复制内容到所有拖拽经过的单元格
             draggedCells.forEach(cell => {
@@ -968,9 +969,18 @@
                         })
                     );
                     
-                    // 如果开启批量创建且原单元格为空，记录下来
-                    if (isAdmin && currentScheduleType === 'student' && repeatToggle && repeatToggle.checked && sourceContent && !originalContent) {
+                    // 如果开启批量创建，只要拖动的是有内容的格子就触发（包括创建和覆盖）
+                    if (isAdmin && currentScheduleType === 'student' && repeatToggle && repeatToggle.checked && sourceContent) {
                         cellsForBatchCreate.push({
+                            rowIndex: row,
+                            colIndex: col,
+                            studentName: student
+                        });
+                    }
+                    
+                    // 如果开启批量删除且拖动空内容到有内容的格子，记录下来
+                    if (isAdmin && currentScheduleType === 'student' && repeatToggle && repeatToggle.checked && !sourceContent && originalContent) {
+                        cellsForBatchDelete.push({
                             rowIndex: row,
                             colIndex: col,
                             studentName: student
@@ -987,6 +997,13 @@
                 if (cellsForBatchCreate.length > 0) {
                     cellsForBatchCreate.forEach(cellInfo => {
                         batchCreateWeekly(sourceContent, cellInfo.rowIndex, cellInfo.colIndex, cellInfo.studentName);
+                    });
+                }
+                
+                // 如果有需要批量删除的单元格，逐个触发批量删除
+                if (cellsForBatchDelete.length > 0) {
+                    cellsForBatchDelete.forEach(cellInfo => {
+                        batchDeleteWeekly(cellInfo.rowIndex, cellInfo.colIndex, cellInfo.studentName);
                     });
                 }
             }).catch(error => {
@@ -1359,8 +1376,15 @@
             lastClickTime = currentTime;
             
             if (isDoubleClick && isAdmin) {
-                // 双击编辑 - 只有管理员可以
-                editCell(cell);
+                // 双击操作 - 只有管理员可以
+                const cellContent = cell.textContent.trim();
+                if (cellContent) {
+                    // 双击有内容的单元格 → 删除
+                    deleteCell(cell);
+                } else {
+                    // 双击空单元格 → 编辑（创建）
+                    editCell(cell);
+                }
             } else {
                 // 单击选中 - 所有用户都可以
                 clearCellSelection();
@@ -1452,6 +1476,93 @@
             });
         }
         
+        // 删除单元格内容（双击删除）
+        function deleteCell(cell) {
+            // 只有管理员才能删除
+            if (!isAdmin) {
+                alert('权限不足，只有管理员可以删除课程');
+                return;
+            }
+            
+            // 如果是教室课表，不允许删除（只读）
+            if (currentScheduleType === 'classroom') {
+                return;
+            }
+            
+            const row = parseInt(cell.getAttribute('data-row'));
+            const col = parseInt(cell.getAttribute('data-col'));
+            const day = cell.getAttribute('data-day');
+            const time = cell.getAttribute('data-time');
+            const student = cell.getAttribute('data-student');
+            const currentText = cell.textContent.trim();
+            
+            // 如果单元格为空，不需要删除
+            if (!currentText) {
+                return;
+            }
+            
+            // 保存状态用于撤回
+            if (currentScheduleType === 'student') {
+                saveStateForUndo();
+            }
+            
+            const month = yearSelect.value + '-' + monthSelect.value;
+            const requestData = {
+                month: month,
+                campus: campusSelect.value,
+                type: currentScheduleType,
+                day_index: col,
+                time_slot_index: row,
+                subject: '',  // 空subject表示删除
+                day_label: day,
+                time_slot: time
+            };
+            
+            if (currentScheduleType === 'classroom') {
+                requestData.classroom = cell.getAttribute('data-classroom');
+            } else {
+                requestData.student_name = student;
+            }
+            
+            fetch('/campus_schedule', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json().catch(err => {
+                    console.error('JSON解析失败:', err);
+                    return { success: response.status === 200 };
+                });
+            })
+            .then(data => {
+                if (data.success) {
+                    updateCellDisplay(cell, '');
+                    clearCellSelection();
+                    
+                    // 若开启按周批量删除：仅在学生课表、管理员时触发
+                    if (isAdmin && currentScheduleType === 'student' && repeatToggle && repeatToggle.checked) {
+                        const rowIndex = row;
+                        const editedColIndex = col;
+                        const studentName = student;
+                        // 异步执行，不阻塞主流程
+                        batchDeleteWeekly(rowIndex, editedColIndex, studentName);
+                    }
+                } else {
+                    alert('删除失败: ' + (data.message || '未知错误'));
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('删除失败: 网络错误或服务器错误');
+            });
+        }
+        
         // 编辑单元格
         function editCell(cell) {
             // 只有管理员才能编辑
@@ -1462,6 +1573,11 @@
             
             // 如果是教室课表，不允许编辑（只读）
             if (currentScheduleType === 'classroom') {
+                return;
+            }
+            
+            // 如果单元格已经在编辑中（包含input元素），直接返回
+            if (cell.querySelector('input')) {
                 return;
             }
             
@@ -1522,7 +1638,16 @@
                     },
                     body: JSON.stringify(requestData)
                 })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json().catch(err => {
+                        console.error('JSON解析失败:', err);
+                        // 如果JSON解析失败，返回一个假定成功的对象（如果HTTP状态码是200）
+                        return { success: response.status === 200 };
+                    });
+                })
                 .then(data => {
                     if (data.success) {
                         updateCellDisplay(cell, newValue);
@@ -1537,6 +1662,15 @@
                             // 异步执行，不阻塞主流程
                             batchCreateWeekly(newValue, rowIndex, editedColIndex, studentName);
                         }
+                        
+                        // 若开启按周批量删除：仅在学生课表、管理员、从有内容删除为空时触发
+                        if (isAdmin && currentScheduleType === 'student' && repeatToggle && repeatToggle.checked && !newValue && currentText) {
+                            const rowIndex = row;
+                            const editedColIndex = col;
+                            const studentName = student;
+                            // 异步执行，不阻塞主流程
+                            batchDeleteWeekly(rowIndex, editedColIndex, studentName);
+                        }
                     } else {
                         alert('保存失败: ' + (data.message || '未知错误'));
                         cell.innerHTML = originalContent;
@@ -1544,7 +1678,7 @@
                 })
                 .catch(error => {
                     console.error('Error:', error);
-                    alert('保存失败: 网络错误');
+                    alert('保存失败: 网络错误或服务器错误');
                     cell.innerHTML = originalContent;
                 });
             }
@@ -1745,6 +1879,146 @@
             } catch (err) {
                 console.error('Batch create error:', err);
                 alert('批量创建失败：' + (err && err.message ? err.message : '网络或数据错误'));
+            }
+        }
+
+        // 批量删除课程（按周重复）
+        async function batchDeleteWeekly(rowIndex, editedColIndex, studentName) {
+            try {
+                if (!repeatStart || !repeatEnd || !repeatStart.value || !repeatEnd.value) {
+                    alert('请先设置开始和结束日期');
+                    return;
+                }
+                // 使用本地解析避免时区导致的日期偏移
+                const parseLocalDate = (s) => {
+                    const parts = s.split('-');
+                    const y = parseInt(parts[0], 10);
+                    const m = parseInt(parts[1], 10) - 1;
+                    const d = parseInt(parts[2], 10);
+                    return new Date(y, m, d);
+                };
+                const start = parseLocalDate(repeatStart.value);
+                const end = parseLocalDate(repeatEnd.value);
+                if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                    alert('日期格式不正确');
+                    return;
+                }
+                if (start > end) {
+                    alert('开始日期不能晚于结束日期');
+                    return;
+                }
+
+                // 当前编辑单元格的真实日期
+                const baseYear = parseInt(yearSelect.value, 10);
+                const baseMonthZero = parseInt(monthSelect.value, 10) - 1; // 0-11
+                const editedDate = new Date(baseYear, baseMonthZero, editedColIndex + 1);
+
+                // 找到范围内第一个与编辑日同星期的日期
+                let first = new Date(editedDate);
+                while (first > start) first.setDate(first.getDate() - 7);
+                while (first < start) first.setDate(first.getDate() + 7);
+
+                // 生成所有目标日期（排除已编辑当天）
+                const targets = [];
+                for (let d = new Date(first); d <= end; d.setDate(d.getDate() + 7)) {
+                    const nd = new Date(d);
+                    if (
+                        nd.getFullYear() === editedDate.getFullYear() &&
+                        nd.getMonth() === editedDate.getMonth() &&
+                        nd.getDate() === editedDate.getDate()
+                    ) {
+                        continue;
+                    }
+                    targets.push(nd);
+                }
+                if (targets.length === 0) {
+                    return;
+                }
+
+                // 按月聚合
+                const monthKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                const byMonth = {};
+                targets.forEach(d => {
+                    const k = monthKey(d);
+                    if (!byMonth[k]) byMonth[k] = [];
+                    byMonth[k].push(d);
+                });
+
+                // 发送删除请求（使用POST + 空subject）
+                const weekdayNames = ['星期日','星期一','星期二','星期三','星期四','星期五','星期六'];
+                const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+                const errors = [];
+                for (const d of targets) {
+                    const mstr = monthKey(d);
+                    const dayIdx = d.getDate() - 1;
+                    const dayLabel = weekdayNames[d.getDay()];
+                    const timeSlotText = timeSlots[rowIndex];
+                    const requestData = {
+                        month: mstr,
+                        campus: campusSelect.value,
+                        type: 'student',
+                        day_index: dayIdx,
+                        time_slot_index: rowIndex,
+                        subject: '',  // 空subject表示删除
+                        day_label: dayLabel,
+                        time_slot: timeSlotText,
+                        student_name: studentName
+                    };
+                    let attempt = 0;
+                    let ok = false;
+                    while (attempt < 3 && !ok) {
+                        attempt++;
+                        try {
+                            console.log('[BatchDelete] POST (空subject)', { mstr, dayIdx: dayIdx+1, timeSlotText, attempt });
+                            const resp = await fetch('/campus_schedule', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(requestData)
+                            });
+                            let json;
+                            try { json = await resp.json(); } catch (_) { json = { success: false, message: '响应解析失败' }; }
+                            const message = (json && json.message) ? String(json.message) : '';
+                            const isDeadlock = message.includes('Deadlock') || message.includes('1213');
+                            if (resp.ok && json && json.success === true) {
+                                ok = true;
+                                console.log('[BatchDelete] OK', { mstr, day: dayIdx+1, timeSlotText });
+                                break;
+                            }
+                            if (isDeadlock && attempt < 3) {
+                                await sleep(120 * attempt);
+                                continue;
+                            }
+                            throw new Error(`${mstr} 第${dayIdx+1}天 ${timeSlotText} 删除失败：${message || `请求失败 (${resp.status})`}`);
+                        } catch (e) {
+                            if (attempt >= 3) {
+                                errors.push(e.message || String(e));
+                            } else {
+                                await sleep(120 * attempt);
+                            }
+                        }
+                    }
+                }
+                if (errors.length > 0) {
+                    alert('部分删除失败：\n' + errors.join('\n'));
+                }
+
+                // 同步更新当前月份可见表格中的相应单元格
+                const visibleMonthKey = `${yearSelect.value}-${monthSelect.value}`;
+                if (byMonth[visibleMonthKey]) {
+                    const table = document.querySelector(`#schedule-${studentName}-table`);
+                    if (table) {
+                        byMonth[visibleMonthKey].forEach(d => {
+                            const dayIdx = d.getDate() - 1;
+                            const targetCell = table.querySelector(`td[data-row="${rowIndex}"][data-col="${dayIdx}"]`);
+                            if (targetCell) {
+                                updateCellDisplay(targetCell, '');
+                            }
+                        });
+                    }
+                }
+            } catch (err) {
+                console.error('Batch delete error:', err);
+                alert('批量删除失败：' + (err && err.message ? err.message : '网络或数据错误'));
             }
         }
 
