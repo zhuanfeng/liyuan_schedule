@@ -867,7 +867,7 @@ def _handle_student_course_delete(cursor, month, campus, student_name, day_index
 def _find_available_classroom(cursor, month, campus, day_index, time_slot_index):
     """查找可用教室"""
     campus_classrooms = {
-        'wendefu': ['a', 'b', 'c', 'd'],
+        'wendefu': ['a', 'b', 'c'],
         'cuihai': ['a', 'b'],
         'weipeng': ['a', 'b', 'c', 'd', 'e']
     }
@@ -1086,7 +1086,7 @@ def campus_schedule():
     
     # 定义校区和对应的教室数量
     campus_classrooms = {
-        'wendefu': ['a', 'b', 'c', 'd'],  # 文德福4个教室
+        'wendefu': ['a', 'b', 'c'],  # 文德福3个教室
         'cuihai': ['a', 'b'],             # 翠海2个教室
         'weipeng': ['a', 'b', 'c', 'd', 'e']  # 玮鹏5个教室
     }
@@ -1316,7 +1316,7 @@ def campus_schedule_data():
     if schedule_type == 'classroom':
         # 定义校区和对应的教室数量
         campus_classrooms = {
-            'wendefu': ['a', 'b', 'c', 'd'],  # 文德福4个教室
+            'wendefu': ['a', 'b', 'c'],  # 文德福3个教室
             'cuihai': ['a', 'b'],             # 翠海2个教室
             'weipeng': ['a', 'b', 'c', 'd', 'e']  # 玮鹏5个教室
         }
